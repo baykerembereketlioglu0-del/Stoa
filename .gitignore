@@ -1,0 +1,6 @@
+node_modules/
+frames/
+# Yeniden üretilebilir büyük ses dosyaları (mp3 önbelleği repoda kalır, kredi harcamadan yeniden üretilir)
+bolumler/*/narration.wav
+bolumler/*/soundtrack.wav
+*.log
