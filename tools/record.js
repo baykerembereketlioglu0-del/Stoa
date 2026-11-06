@@ -20,7 +20,7 @@ const narration = path.join(dir, 'narration.wav'), music = path.join(dir, 'sound
   await page.waitForFunction(() => typeof window.seekTo === 'function', null, { timeout: 30000 });
   const dur = await page.evaluate(() => window.DURATION);
   const t0 = +(opt('from') || 0), t1 = Math.min(dur, +(opt('to') || dur)), total = Math.ceil((t1 - t0) * FPS);
-  const hasN = fs.existsSync(narration), hasM = fs.existsSync(music);
+  const noAudio = args.includes('--noaudio'), hasN = !noAudio && fs.existsSync(narration), hasM = !noAudio && fs.existsSync(music);
 
   const ff = ['-y', '-v', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(FPS), '-i', '-'];
   let ai = 1; const mix = [];

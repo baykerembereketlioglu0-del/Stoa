@@ -68,7 +68,7 @@ function romeSkyline(t, base, col, lit = null, seed = 0) {
   ridge(3 + seed, base - 170, 90, 0.0016, col.far, 0.2);
   for (let i = 0; i < 6; i++) { const px = 120 + i * 330 + R(i + seed) * 80; temple(px, base - 150 - R(i) * 40, 90, 50, col.far, 5); }
   haze(base - 260, base - 60, hz, 0.35);
-  x.save(); x.filter = 'blur(1.2px)'; houses(15 + seed, base - 40, 30, -100, W + 100, 40, 110, mixHex(col.far, col.mid, 0.5), lit, 0.5); x.restore();
+  blurred(1.2, () => houses(15 + seed, base - 40, 30, -100, W + 100, 40, 110, mixHex(col.far, col.mid, 0.5), lit, 0.5));
   haze(base - 140, base - 20, hz, 0.22);
   houses(5 + seed, base, 34, -100, W + 100, 50, 140, col.mid, lit, 0.7);
   pantheon(1640, base - 20, 0.9, col.mid); temple(1250, base - 60, 340, 200, col.mid, 8); temple(470, base - 40, 240, 150, col.mid, 6);

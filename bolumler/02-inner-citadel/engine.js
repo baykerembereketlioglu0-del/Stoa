@@ -72,6 +72,16 @@ function ridge(seed, y0, amp, freq, col, rough = 0.35, edge = null) {
   x.beginPath(); x.moveTo(-400, H + 400); for (let i = 0; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]); x.lineTo(W + 400, H + 400); x.closePath(); x.fillStyle = col; x.fill();
   if (edge) { x.beginPath(); x.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]); x.strokeStyle = edge; x.lineWidth = 2; x.stroke(); }
 }
+// draw a group of shapes into an offscreen layer, then blur the whole layer once (fast depth of field)
+const BLUR_C = document.createElement('canvas'), BLUR_D = document.createElement('canvas'); BLUR_C.width = BLUR_D.width = W / 2; BLUR_C.height = BLUR_D.height = H / 2;
+function blurred(px, fn) { // rendered at half resolution: it is blurred anyway
+  if (px < 1.2) { fn(); return; }
+  const B = BLUR_C.getContext('2d'), D = BLUR_D.getContext('2d'), main = x, m = x.getTransform();
+  B.setTransform(1, 0, 0, 1, 0, 0); B.globalCompositeOperation = 'source-over'; B.globalAlpha = 1; B.filter = 'none'; B.clearRect(0, 0, W / 2, H / 2);
+  B.setTransform(m.a / 2, m.b / 2, m.c / 2, m.d / 2, m.e / 2, m.f / 2); B.lineJoin = B.lineCap = 'round'; x = B; try { fn(); } finally { x = main; }
+  D.setTransform(1, 0, 0, 1, 0, 0); D.clearRect(0, 0, W / 2, H / 2); D.filter = `blur(${(px / 2).toFixed(1)}px)`; D.drawImage(BLUR_C, 0, 0); D.filter = 'none';
+  x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.imageSmoothingQuality = 'high'; x.drawImage(BLUR_D, 0, 0, W, H); x.restore();
+}
 const hexRGB = h => { const v = parseInt(h.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
 function mixHex(a, b, k) { const A = hexRGB(a), B = hexRGB(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], k))).join(',')})`; }
 function haze(y0, y1, col, a) { if (a <= 0) return; const g = x.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(0.6, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(-400, y0, W + 800, y1 - y0); }
@@ -79,15 +89,16 @@ function haze(y0, y1, col, a) { if (a <= 0) return; const g = x.createLinearGrad
 function landscape(seed, base, n, far, near, o = {}) {
   for (let i = 0; i < n; i++) {
     const k = n === 1 ? 1 : i / (n - 1), y = base - (1 - k) * (o.rise ?? 170), amp = (o.amp ?? 210) * (1 - 0.6 * k);
-    x.save(); const bl = (o.blur ?? 5) * (1 - k); if (bl > 0.4) x.filter = `blur(${bl.toFixed(1)}px)`;
-    ridge(seed + i * 7, y, amp, (o.freq ?? 0.0015) * (1 + k * 1.3), mixHex(far, near, k), o.rough ?? 0.3, o.edge && i === n - 1 ? null : (o.edge ? `rgba(${o.edge},${0.25 * (1 - k) + 0.08})` : null));
-    if (o.trees && k > 0.3) forest(seed + i * 11, y + 6, Math.round(30 + 50 * k), -200, W + 200, 40 + 80 * k, 90 + 160 * k, mixHex(far, near, k), o.snow ? 0.5 * (1 - k * 0.5) : 0);
-    x.restore();
+    blurred((o.blur ?? 5) * (1 - k), () => {
+      ridge(seed + i * 7, y, amp, (o.freq ?? 0.0015) * (1 + k * 1.3), mixHex(far, near, k), o.rough ?? 0.3, o.edge && i === n - 1 ? null : (o.edge ? `rgba(${o.edge},${0.25 * (1 - k) + 0.08})` : null));
+      if (o.trees && k > 0.3) forest(seed + i * 11, y + 6, Math.round(30 + 50 * k), -200, W + 200, 40 + 80 * k, 90 + 160 * k, mixHex(far, near, k), o.snow ? 0.5 * (1 - k * 0.5) : 0);
+    });
     if (o.haze && i < n - 1) haze(y - amp * 0.55, y + 90, o.haze, (o.hazeA ?? 0.4) * (1 - k * 0.6));
   }
 }
-function fgGrass(t, seed, y, col, n = 150, blur = 3, h = 70, dry = false) {
-  x.save(); if (blur) x.filter = `blur(${blur}px)`; x.fillStyle = col; x.strokeStyle = col;
+function fgGrass(t, seed, y, col, n = 150, blur = 3, h = 70, dry = false) { blurred(blur, () => fgGrass0(t, seed, y, col, n, h, dry)); }
+function fgGrass0(t, seed, y, col, n, h, dry) {
+  x.save(); x.fillStyle = col; x.strokeStyle = col;
   x.beginPath(); x.moveTo(-400, H + 400); for (let px = -400; px <= W + 400; px += 40) x.lineTo(px, y + Math.sin(px * 0.01 + seed) * 12 + noise1(px * 0.02, seed) * 10); x.lineTo(W + 400, H + 400); x.closePath(); x.fill();
   for (let k = 0; k < 7; k++) { ell(R(k * 9 + seed) * W, y + 8, 50 + R(k) * 110, 22 + R(k + 2) * 40, (R(k + 4) - 0.5) * 0.3); x.fill(); }
   for (let i = 0; i < n; i++) { const px = R(i + seed) * (W + 200) - 100, hh = h * (0.35 + R(i * 3 + seed)), sway = Math.sin(t * 1.6 + px * 0.012) * hh * 0.18 + (dry ? hh * 0.1 : 0); x.lineWidth = 2 + R(i) * 3.5; x.beginPath(); x.moveTo(px, y + 10); x.quadraticCurveTo(px + sway * 0.4, y - hh * 0.5, px + sway, y - hh); x.stroke(); }
@@ -320,9 +331,10 @@ function rimPerson(cx, base, h, col, rim, o = {}, off = [-3, -2]) {
   B.drawImage(FIG_A, 0, 0, S2, S2, dx, dy, S2, S2);
   A.globalCompositeOperation = 'destination-out'; A.drawImage(FIG_B, 0, 0, S2, S2, 0, 0, S2, S2);
   A.globalCompositeOperation = 'source-in'; A.fillStyle = rim; A.fillRect(0, 0, S2, S2);
-  x.save(); x.globalCompositeOperation = 'lighter'; x.filter = `blur(${Math.max(2, h * 0.012)}px)`; x.globalAlpha = 0.9;
-  x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2); x.filter = 'none'; x.globalAlpha = 1;
+  const big = h >= 260;
+  x.save(); if (big) { x.globalCompositeOperation = 'lighter'; x.filter = `blur(${Math.max(2, h * 0.012)}px)`; x.globalAlpha = 0.9; x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2); x.filter = 'none'; x.globalAlpha = 1; }
   x.globalCompositeOperation = 'source-over'; x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2);
+  if (!big) { x.restore(); return; }
   // soft fill light across the lit side of the body, for volume
   A.globalCompositeOperation = 'source-over'; A.clearRect(0, 0, S2, S2); x = A; person(ox, oy, h, '#fff', o); x = main;
   const lx = ox + off[0] / L * h * 0.32, ly = oy - h * 0.55 + off[1] / L * h * 0.32, g = A.createRadialGradient(lx, ly, 0, lx, ly, h * 0.55);

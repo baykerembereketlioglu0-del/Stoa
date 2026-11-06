@@ -33,7 +33,7 @@ function sceneFrontier(t) {
     legion(t, 860, 20, 110, '#141a20', null, 44, 50, -200, W + 200, 110);
     standard(700 + (t - sh.s) * 50, 880, 380, '#0e1216', t); standard(1300 + (t - sh.s) * 50, 880, 400, '#0e1216', t + 2);
     legion(t, 1010, 12, 200, '#080a0c', 'rgba(255,255,255,.4)', 45, 80, -300, W + 300, 190);
-    x.save(); x.filter = 'blur(5px)'; forest(46, 1120, 10, -200, W + 200, 400, 560, '#050608', 0.5); x.restore();
+    blurred(5, () => forest(46, 1120, 10, -200, W + 200, 400, 560, '#050608', 0.5));
     x.restore(); motes(t, 40, [0, W, 0, H], '255,255,255', 0.3, 5);
     snowfall(t, 260, 120, 0.85, 1);
     const a = win(t, sh.s + 0.6, sh.e - 0.8); textC('DANUBE FRONTIER', 160, 150, '900 58px Cinzel', '#ffffff', 14, a, 'left'); textC('166 – 180 AD', 160, 210, '700 32px Cinzel', '#e6ecf2', 10, a, 'left');
