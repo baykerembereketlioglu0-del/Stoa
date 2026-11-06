@@ -4,3 +4,5 @@ frames/
 bolumler/*/narration.wav
 bolumler/*/soundtrack.wav
 *.log
+bolumler/*/.voice-tmp/
+videolar/02-*.mp4

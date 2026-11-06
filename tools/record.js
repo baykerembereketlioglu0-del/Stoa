@@ -29,7 +29,7 @@ const narration = path.join(dir, 'narration.wav'), music = path.join(dir, 'sound
   if (hasN && hasM) // müzik, anlatım konuşurken kısılır (sidechain ducking)
     mix.push('-filter_complex', '[1:a]volume=1.6,asplit=2[n1][n2];[2:a]volume=0.5[mu];[mu][n1]sidechaincompress=threshold=0.04:ratio=5:attack=15:release=450:makeup=1[m];[n2][m]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[a]', '-map', '0:v', '-map', '[a]');
   else if (hasN || hasM) mix.push('-filter_complex', '[1:a]loudnorm=I=-14:TP=-1.5[a]', '-map', '0:v', '-map', '[a]');
-  const enc = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart'];
+  const enc = ['-c:v', 'libx264', '-preset', opt('preset') || 'slow', '-crf', opt('crf') || '20', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart'];
   if (mix.length) enc.push('-c:a', 'aac', '-b:a', '192k', '-shortest');
   const proc = spawn('ffmpeg', [...ff, ...mix, ...enc, out], { stdio: ['pipe', 'inherit', 'inherit'] });
 

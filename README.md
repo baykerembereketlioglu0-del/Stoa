@@ -1,6 +1,6 @@
 # STOA
 
-Stoacı felsefe üzerine karanlık, anlatımlı, **9:16** kısa animasyon serisi (Reels / Shorts / TikTok).
+Stoacı felsefe üzerine karanlık, anlatımlı animasyon serisi: **9:16** kısa videolar (Reels / Shorts / TikTok) ve **16:9** uzun YouTube bölümleri.
 
 - **Çizimler:** tamamen JavaScript canvas ile, kodla çizilir. Hazır görsel kullanılmaz.
 - **Animasyon kaydı:** Playwright, sayfayı kare kare (30 fps, 1080×1920) kaydeder.
@@ -11,7 +11,8 @@ Stoacı felsefe üzerine karanlık, anlatımlı, **9:16** kısa animasyon serisi
 
 | No | Bölüm | Filozof | Video |
 |----|-------|---------|-------|
-| 01 | Elinde Olan | Epiktetos | `videolar/01-elinde-olan.mp4` |
+| 01 | Elinde Olan | Epiktetos | `videolar/01-elinde-olan.mp4` (9:16, 70 sn) |
+| 02 | The Inner Citadel (İngilizce) | Marcus Aurelius | 16:9, ~8 dk · metin: `bolumler/02-inner-citadel/NARRATION.md` |
 
 ## Klasör yapısı
 
@@ -42,6 +43,14 @@ node tools/record.js bolumler/01-elinde-olan
 - Anlatıcı sesini değiştirmek için: `VOICE_NARRATOR=<voice_id>`.
 - Kısa bir parçayı hızlıca denemek için: `node tools/record.js bolumler/01-elinde-olan --from 20 --to 26 --out deneme.mp4`.
 - API anahtarını dosyalara yazma. Yalnızca ortam değişkeniyle ver.
+
+## Uzun bölüm (02) — kendi sesinle
+
+1. Sesi `bolumler/02-inner-citadel/voice/` içine koy: satır başına `01.mp3 … 79.mp3`, ya da tek dosya `full.mp3`.
+   (ElevenLabs ile üretmek için: `VOICE_NARRATOR=<voice_id> node tools/import_voice.js bolumler/02-inner-citadel --tts`)
+2. `node tools/import_voice.js bolumler/02-inner-citadel` → anlatım + zamanlama (tüm animasyon sese göre yeniden zamanlanır)
+3. `node tools/score.js bolumler/02-inner-citadel` → müzik + efektler
+4. `node tools/record.js bolumler/02-inner-citadel` → `videolar/02-inner-citadel.mp4` (1920×1080)
 
 ## Yeni bölüm eklemek
 

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STOA 02 · The Inner Citadel</title>
+<link rel="stylesheet" href="../../assets/fonts/fonts.css">
+<style>
+html,body{margin:0;height:100%;background:#070505;color:#eadfcf;font-family:Inter,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+canvas{width:min(96vw,calc(84vh*16/9));aspect-ratio:16/9;box-shadow:0 0 0 1px #d9a44144,0 24px 70px #000}
+#ui{display:flex;gap:10px;align-items:center;width:min(96vw,calc(84vh*16/9));font-size:13px}
+button{background:#d9a441;color:#120c06;border:0;border-radius:8px;padding:8px 14px;font-weight:800;cursor:pointer}
+input{flex:1;accent-color:#d9a441}
+body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{width:100vw;box-shadow:none}
+</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="ui"><button id="pp">Play</button><input id="sl" type="range" min="0" max="600" step="0.033" value="0"><span id="tm">0:00</span></div>
+<audio id="a1" src="narration.wav" preload="auto"></audio><audio id="a2" src="soundtrack.wav" preload="auto"></audio>
+<script src="script.js"></script>
+<script src="timeline.js"></script>
+<script>
+const capMode = location.search.includes('capture=1'); if (capMode) document.body.classList.add('cap');
+const TL = window.TIMELINE || EP.estimateTimeline(), LN = TL.lines, DUR = TL.duration, C = EP.cues(TL), S = C.scenes; window.DURATION = DUR;
+let T_NOW = 0, SHOT_S = 0;
+</script>
+<script src="engine.js"></script>
+<script>
+// remember each shot's start so render() can fade every cut in from black
+const _shot = shot; shot = function (t, starts, end) { const r = _shot(t, starts, end); SHOT_S = r.s; return r; };
+function sceneOf(t) { for (const n of EP.SCENES) if (t >= S[n].start && t < S[n].end) return n; return 'outro'; }
+</script>
+<script src="scenes1.js"></script>
+<script src="scenes2.js"></script>
+<script src="scenes3.js"></script>
+<script>
+// =====================================================================
+//  CAPTIONS — phrase by phrase, current word lit, key words in gold
+// =====================================================================
+const NOCAP = new Set(['list', 'crisis', 'why', 'now'].map(id => C.ID[id]));
+const CAPS = [];
+LN.forEach((l, li) => {
+  const meta = EP.LINES[li]; if (meta.quote || NOCAP.has(li)) return;
+  const emph = meta.emph || [], ws = l.words; let i = 0;
+  while (i < ws.length) {
+    const ch = [i]; let len = ws[i][0].length;
+    while (i + ch.length < ws.length && len + ws[i + ch.length][0].length + 1 <= 40 && !/[.?!:;]["”]?$/.test(ws[i + ch.length - 1][0])) { len += ws[i + ch.length][0].length + 1; ch.push(i + ch.length); }
+    CAPS.push({ s: ws[ch[0]][1], e: ws[ch[ch.length - 1]][2] + 0.35, words: ch.map(k => ({ t: ws[k][0], s: ws[k][1], e: ws[k][2], em: emph.some(p => ws[k][0].toLowerCase().replace(/[^\p{L}]/gu, '').startsWith(p)) })) });
+    i += ch.length;
+  }
+});
+CAPS.forEach((u, i) => { if (i < CAPS.length - 1) u.e = Math.max(u.s + 0.25, Math.min(u.e, CAPS[i + 1].s)); });
+function captions(t) {
+  const u = CAPS.find(u => t >= u.s && t < u.e); if (!u) return;
+  x.save(); x.font = '800 50px Inter'; x.textBaseline = 'middle';
+  const sp = x.measureText(' ').width, full = u.words.reduce((a, w) => a + x.measureText(w.t).width, 0) + sp * (u.words.length - 1);
+  const y = 975, k = ss(u.s, u.s + 0.12, t); let px = 960 - full / 2;
+  x.globalAlpha = 0.55 * k; x.fillStyle = '#000'; x.beginPath(); x.roundRect(960 - full / 2 - 28, y - 42, full + 56, 84, 14); x.fill(); x.globalAlpha = k;
+  u.words.forEach(w => {
+    const ww = x.measureText(w.t).width, on = t >= w.s, cur = on && t < w.e + 0.05;
+    x.fillStyle = w.em && on ? GOLD2 : cur ? '#ffffff' : on ? '#e9e2d6' : 'rgba(255,255,255,.45)';
+    x.fillText(w.t, px, y + (cur ? -2 : 0)); px += ww + sp;
+  });
+  x.restore();
+}
+
+// =====================================================================
+//  QUOTE CARDS — the words of the Meditations, revealed as spoken
+// =====================================================================
+const QUOTES = LN.map((l, li) => ({ l, li, meta: EP.LINES[li] })).filter(q => q.meta.quote);
+function wrap(words, font, maxW) { x.font = font; const rows = []; let cur = []; words.forEach((w, i) => { const test = [...cur.map(j => words[j]), w].join(' '); if (x.measureText(test).width > maxW && cur.length) { rows.push(cur); cur = []; } cur.push(i); }); rows.push(cur); return rows; }
+function quotes(t) {
+  for (const q of QUOTES) {
+    const { l, meta } = q, a0 = l.start - 0.35, a1 = l.end + (meta.pause || 0) * 0.8;
+    const a = win(t, a0, a1, 0.35, 0.5); if (a <= 0) continue;
+    const big = l.words.length <= 3, ws = l.words.map(w => w[0]);
+    x.save(); x.fillStyle = `rgba(4,3,2,${0.72 * a})`; x.fillRect(0, 0, W, H);
+    const font = big ? '900 230px Cinzel' : '600 italic 66px Cormorant', lh = big ? 250 : 84;
+    const rows = wrap(big ? ws.map(w => w.toUpperCase()) : ws, font, big ? 1700 : 1360), y0 = 520 - (rows.length - 1) * lh / 2 - (meta.cite ? 30 : 0);
+    if (!big) textC('“', 960 - 720, y0 - 90, '600 italic 220px Cormorant', GOLD, 0, 0.8 * a);
+    x.font = font; x.textBaseline = 'middle'; x.textAlign = 'left'; if (big) x.letterSpacing = '24px';
+    rows.forEach((r, ri) => {
+      const txt = r.map(i => big ? ws[i].toUpperCase() : ws[i]), full = x.measureText(txt.join(' ')).width; let px = 960 - full / 2;
+      r.forEach((i, j) => {
+        const k = ss(l.words[i][1] - 0.06, l.words[i][1] + 0.22, t), w = txt[j];
+        if (k > 0) { x.save(); x.globalAlpha = k * a; x.fillStyle = k < 1 ? '#fff4d6' : (big ? GOLD2 : '#f2e6cc'); x.shadowColor = 'rgba(255,170,60,.7)'; x.shadowBlur = (big ? 50 : 24) * (1 - k) + (big ? 20 : 4); x.fillText(w, px, y0 + ri * lh + (1 - k) * 14); x.restore(); }
+        px += x.measureText(w + ' ').width;
+      });
+    });
+    x.letterSpacing = '0px';
+    if (meta.cite) { const ca = ss(l.end - 0.2, l.end + 0.4, t) * a; x.fillStyle = GOLD; x.globalAlpha = ca; x.fillRect(960 - 80, y0 + rows.length * lh - 10, 160, 3); textC('MARCUS AURELIUS  ·  ' + meta.cite, 960, y0 + rows.length * lh + 40, '700 30px Cinzel', GOLD, 10, ca); }
+    x.restore();
+  }
+}
+
+// =====================================================================
+//  CHAPTER CARDS
+// =====================================================================
+function chapters(t) {
+  for (const n of EP.SCENES) {
+    const c0 = S[n].chapter; if (c0 == null) continue;
+    const k = t - c0; if (k < -0.05 || k > EP.CHAPTER_HOLD + 0.1) continue;
+    const a = ss(-0.05, 0.25, k) * (1 - ss(EP.CHAPTER_HOLD - 0.6, EP.CHAPTER_HOLD, k));
+    x.save(); x.fillStyle = `rgba(3,2,2,${Math.min(1, a * 1.1)})`; x.fillRect(0, 0, W, H);
+    smoke(t, 5, '80,50,20', 0.18 * a, 200 + c0, 300, 800);
+    const [num, ...rest] = EP.CHAPTERS[n].split(' · '), ttl = rest.join(' · ');
+    textC(num, 960, 430, '900 120px Cinzel', GOLD, 20, a * ss(0, 0.5, k));
+    x.globalAlpha = a; x.fillStyle = GOLD; const lw = 420 * ss(0.2, 0.9, k); x.fillRect(960 - lw / 2, 520, lw, 3);
+    textC(ttl, 960, 600, '900 76px Cinzel', '#f3e8d2', 16, a * ss(0.3, 0.9, k));
+    x.restore();
+  }
+}
+
+// =====================================================================
+//  RENDER
+// =====================================================================
+const SCN = { hook: sceneHook, title: sceneTitle, rome: sceneRome, plague: sceneplague, frontier: sceneFrontier, betrayal: sceneBetrayal, citadel: sceneCitadel, tools: sceneTools, legacy: sceneLegacy, outro: sceneOutro };
+const IMPACTS = C.fx.filter(f => f.type === 'boom' || f.type === 'hit').map(f => [f.t, f.type === 'boom' ? 9 * f.g : 4 * f.g]);
+function chapterName(t) { let c = ''; for (const n of EP.SCENES) if (S[n].chapter != null && t >= S[n].chapter + EP.CHAPTER_HOLD) c = EP.CHAPTERS[n]; return c; }
+function render(t) {
+  t = cl(t, 0, DUR - 1e-3); T_NOW = t;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.shadowBlur = 0; x.letterSpacing = '0px';
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+  let sh = 0; for (const [it, a] of IMPACTS) if (t >= it && t < it + 1) sh += a * Math.exp(-(t - it) * 7);
+  const name = sceneOf(t);
+  x.save(); x.translate(W / 2 + Math.sin(t * 93) * sh, H / 2 + Math.cos(t * 71) * sh); x.scale(1 + sh * 0.0015, 1 + sh * 0.0015); x.translate(-W / 2, -H / 2);
+  SCN[name](t);
+  x.restore();
+  // grade: vignette + grain + subtle scanlines
+  const v = x.createRadialGradient(960, 540, 520, 960, 540, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.78)'); x.fillStyle = v; x.fillRect(0, 0, W, H);
+  x.save(); x.globalCompositeOperation = 'overlay'; x.globalAlpha = 0.5; x.drawImage(GRAIN[Math.floor(t * 24) % GRAIN.length], 0, 0, W, H); x.restore();
+  // cut fade (each shot) and scene fade
+  const ck = t - SHOT_S; if (ck >= 0 && ck < 0.28 && SHOT_S > 0.05) { x.fillStyle = `rgba(0,0,0,${1 - ck / 0.28})`; x.fillRect(0, 0, W, H); }
+  if (t < 0.4) { x.fillStyle = `rgba(0,0,0,${1 - t / 0.4})`; x.fillRect(0, 0, W, H); }
+  if (t > DUR - 1.6) { x.fillStyle = `rgba(0,0,0,${ss(DUR - 1.6, DUR - 0.1, t)})`; x.fillRect(0, 0, W, H); }
+  quotes(t); captions(t); chapters(t);
+  const cn = chapterName(t), ha = cn && name !== 'outro' ? 0.7 : 0;
+  if (ha) { textC('STOA', 70, 64, '900 26px Cinzel', GOLD, 10, ha, 'left'); textC(cn, 186, 64, '700 20px Cinzel', '#d8ccb4', 6, ha * 0.8, 'left'); }
+}
+
+// ---------- start ----------
+Promise.all(['900 40px Cinzel', '700 40px Cinzel', '600 italic 40px Cormorant', '800 40px Inter'].map(f => document.fonts.load(f, 'AaΣ'))).then(() => {
+  window.seekTo = t => { render(t); return true; };
+  render(capMode ? 0 : 1.5);
+  if (capMode) return;
+  let now = 0, play = false, last = null;
+  const pp = document.getElementById('pp'), sl = document.getElementById('sl'), tm = document.getElementById('tm'), A = [document.getElementById('a1'), document.getElementById('a2')];
+  sl.max = DUR; const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const sync = () => A.forEach(a => { try { a.currentTime = now; play ? a.play().catch(() => {}) : a.pause(); } catch (e) {} });
+  pp.onclick = () => { play = !play; pp.textContent = play ? 'Pause' : 'Play'; last = null; sync(); };
+  sl.oninput = () => { now = +sl.value; render(now); tm.textContent = fmt(now); sync(); };
+  (function loop(ts) { if (play) { if (last != null) now += (ts - last) / 1000; if (now >= DUR) { now = 0; sync(); } render(now); sl.value = now; tm.textContent = fmt(now) + ' / ' + fmt(DUR); } last = ts; requestAnimationFrame(loop); })();
+});
+</script></body></html>
