@@ -39,8 +39,8 @@ function sceneTools(t) {
     vgrad([[0, `rgb(${lerp(10, 40, k)},${lerp(12, 30, k)},${lerp(30, 60, k)})`], [0.6, `rgb(${lerp(40, 230, k)},${lerp(30, 120, k)},${lerp(40, 70, k)})`], [1, '#140c0a']]);
     light(1300, 760, 800, '255,180,100', 0.55 * k); godrays(1300, 780, 11, 1300, '255,200,140', 0.09 * k, t, 2, -PI / 2);
     x.save(); cam(t, [[sh.s, 1.0, 960, 540], [sh.s, 1.1, 900, 560, sh.e - sh.s]]);
-    ridge(141, 760, 140, 0.002, '#2a1a1a'); for (let i = 0; i < 7; i++) tent(200 + i * 250, 860, 0.6, '#140a0a', 0, t);
-    x.fillStyle = '#0a0606'; x.fillRect(-400, 860, W + 800, 400);
+    landscape(141, 790, 4, '#b0603e', '#2a1a1a', { haze: '255,175,115', amp: 180, blur: 5 }); for (let i = 0; i < 7; i++) tent(200 + i * 250, 860, 0.6, '#140a0a', 0, t);
+    x.fillStyle = '#0a0606'; x.fillRect(-400, 860, W + 800, 400); fgGrass(t, 142, 1020, '#050303', 80, 4, 60, true);
     rimPerson(560, 1000, 440, '#050303', 'rgba(255,190,120,.85)', { laurel: true, beard: true, robe: true, cloak: true, dir: 1, wind: t });
     x.restore();
     const ready = ss(C.tools.ready - 0.1, C.tools.ready + 0.8, t);
@@ -68,7 +68,7 @@ function sceneTools(t) {
     const k = ss(sh.s, sh.s + 3, t);
     vgrad([[0, `rgb(${lerp(10, 50, k)},${lerp(10, 40, k)},${lerp(16, 70, k)})`], [0.65, `rgb(${lerp(30, 240, k)},${lerp(20, 150, k)},${lerp(14, 80, k)})`], [1, '#1a100a']]);
     light(960, 800, 1000, '255,200,120', 0.6 * k); godrays(960, 820, 15, 1400, '255,220,160', 0.13 * k, t, 2.6, -PI / 2);
-    ridge(151, 840, 90, 0.0018, '#2a1810'); x.fillStyle = '#120a06'; x.fillRect(-400, 860, W + 800, 400);
+    landscape(151, 860, 3, '#c87442', '#2a1810', { haze: '255,195,125', amp: 120, blur: 5 }); x.fillStyle = '#120a06'; x.fillRect(-400, 860, W + 800, 400);
     const wt = L(11);
     ['ANGER', 'ENVY', 'THE OPINIONS OF STRANGERS'].forEach((w, i) => {
       const t0 = wordTimeAt(11, ['anger', 'envy', 'strangers'][i]), a = ss(t0 - 0.1, t0 + 0.3, t), blow = ss(t0 + 0.8, t0 + 2.6, t); if (a <= 0) return;
@@ -126,16 +126,17 @@ function sceneLegacy(t) {
     colosseum(1250, 860, 620, 300, '#0a0c12'); x.fillStyle = '#05060a'; poly([1560, 860, 1560, 560, 1500, 620, 1440, 600, 1380, 700, 1300, 640, 1250, 860]); x.fill();
     column(300, 380, 900, 80, '#0a0c12'); column(520, 600, 900, 70, '#0a0c12'); x.fillStyle = '#0a0c12'; poly([450, 600, 590, 600, 560, 540, 520, 570, 480, 530]); x.fill();
     x.fillStyle = '#06070b'; x.fillRect(-400, 880, W + 800, 400); for (let i = 0; i < 8; i++) { x.fillRect(200 + i * 180, 870 - R(i) * 40, 90 + R(i + 1) * 60, 40); }
-    for (let i = 0; i < 30; i++) line([R(i) * W, 900, R(i) * W + (R(i + 1) - 0.5) * 30, 840 - R(i + 2) * 60], 3, '#0c140c');
-    x.restore();
+    fgGrass(t, 172, 960, '#04050a', 160, 4, 90, false);
+    x.restore(); motes(t, 50, [0, W, 300, 900], '200,210,240', 0.3, 7);
     smoke(t, 6, '150,150,170', 0.1, 171, 700, 1000);
   } else { // the citadel still stands; the gate opens
     const k = ss(sh.s, sh.s + 3, t), open = ss(C.legacy.enter - 0.2, C.legacy.enter + 1.8, t);
     vgrad([[0, `rgb(${lerp(8, 30, k)},${lerp(10, 26, k)},${lerp(20, 44, k)})`], [0.65, `rgb(${lerp(30, 200, k)},${lerp(24, 110, k)},${lerp(30, 60, k)})`], [1, '#100a08']]);
     light(960, 700, 900, '255,190,110', 0.4 * k);
     x.save(); cam(t, [[sh.s, 1.0, 960, 560], [C.legacy.enter, 1.35, 960, 600, 3]]);
-    ridge(181, 860, 100, 0.002, '#1a1210');
-    fortress(960, 760, 0.7, '#0a0606', 0.8, t, 1, 'rgba(255,190,120,.55)');
+    landscape(181, 880, 3, '#9a6444', '#1a1210', { haze: '255,185,125', amp: 130, blur: 5 });
+    x.fillStyle = '#0c0707'; x.beginPath(); x.moveTo(380, 1100); x.quadraticCurveTo(620, 760, 960, 750); x.quadraticCurveTo(1300, 760, 1540, 1100); x.fill(); // hill
+    fortress(960, 762, 0.7, '#0a0606', 0.8, t, 1, 'rgba(255,190,120,.55)');
     if (open > 0) { x.save(); x.globalCompositeOperation = 'lighter'; x.fillStyle = `rgba(255,210,140,${0.8 * open})`; x.beginPath(); x.moveTo(960 - 35 * open, 760); x.lineTo(960 - 35 * open, 697); x.arc(960, 697, 35 * open, PI, 0); x.lineTo(960 + 35 * open, 760); x.fill(); poly([960 - 35 * open, 760, 960 + 35 * open, 760, 1200, 1100, 720, 1100]); x.fillStyle = `rgba(255,200,130,${0.25 * open})`; x.fill(); x.restore(); light(960, 730, 400, '255,200,130', 0.6 * open); }
     x.fillStyle = '#0a0606'; x.fillRect(-400, 860, W + 800, 400);
     x.restore();

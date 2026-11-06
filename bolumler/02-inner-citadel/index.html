@@ -113,6 +113,15 @@ function chapters(t) {
 // =====================================================================
 const SCN = { hook: sceneHook, title: sceneTitle, rome: sceneRome, plague: sceneplague, frontier: sceneFrontier, betrayal: sceneBetrayal, citadel: sceneCitadel, tools: sceneTools, legacy: sceneLegacy, outro: sceneOutro };
 const IMPACTS = C.fx.filter(f => f.type === 'boom' || f.type === 'hit').map(f => [f.t, f.type === 'boom' ? 9 * f.g : 4 * f.g]);
+// bloom (bright areas glow) + per-scene colour grade
+const BLOOM = document.createElement('canvas'); BLOOM.width = 480; BLOOM.height = 270; const bctx = BLOOM.getContext('2d');
+const GRADE = { hook: ['#2c4c70', 0.32], title: ['#33557e', 0.3], rome: ['#c77b3c', 0.26], plague: ['#5e7a3e', 0.3], frontier: ['#4c6c9c', 0.3], betrayal: ['#9c2c1c', 0.24], citadel: ['#3c5c8c', 0.3], tools: ['#c88a3c', 0.22], legacy: ['#5c6c9c', 0.2], outro: ['#c88a3c', 0.2] };
+function post(name) {
+  bctx.filter = 'brightness(0.85) contrast(2.1) saturate(1.2) blur(8px)'; bctx.clearRect(0, 0, 480, 270); bctx.drawImage(cv, 0, 0, 480, 270);
+  x.save(); x.globalCompositeOperation = 'screen'; x.globalAlpha = 0.45; x.drawImage(BLOOM, 0, 0, W, H);
+  const G = GRADE[name]; if (G) { x.globalCompositeOperation = 'soft-light'; x.globalAlpha = G[1]; x.fillStyle = G[0]; x.fillRect(0, 0, W, H); }
+  x.restore();
+}
 function chapterName(t) { let c = ''; for (const n of EP.SCENES) if (S[n].chapter != null && t >= S[n].chapter + EP.CHAPTER_HOLD) c = EP.CHAPTERS[n]; return c; }
 function render(t) {
   t = cl(t, 0, DUR - 1e-3); T_NOW = t;
@@ -123,6 +132,7 @@ function render(t) {
   x.save(); x.translate(W / 2 + Math.sin(t * 93) * sh, H / 2 + Math.cos(t * 71) * sh); x.scale(1 + sh * 0.0015, 1 + sh * 0.0015); x.translate(-W / 2, -H / 2);
   SCN[name](t);
   x.restore();
+  post(name);
   // grade: vignette + grain + subtle scanlines
   const v = x.createRadialGradient(960, 540, 520, 960, 540, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.78)'); x.fillStyle = v; x.fillRect(0, 0, W, H);
   x.save(); x.globalCompositeOperation = 'overlay'; x.globalAlpha = 0.5; x.drawImage(GRAIN[Math.floor(t * 24) % GRAIN.length], 0, 0, W, H); x.restore();

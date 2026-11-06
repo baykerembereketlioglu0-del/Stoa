@@ -15,7 +15,8 @@ function tentInterior(t, dim = 0) {
   // table, stool, Marcus writing
   x.fillStyle = '#140a04'; x.fillRect(880, 700, 560, 26); line([920, 726, 920, 900], 18, '#140a04'); line([1400, 726, 1400, 900], 18, '#140a04');
   parchment(1000, 666, 260, 38, 0.95);
-  rimPerson(860, 900, 330, '#070402', 'rgba(255,170,90,.85)', { sit: true, beard: true, robe: true, cloak: true, arm: 0.55 + 0.06 * Math.sin(t * 5) }, [4, -3]);
+  x.fillStyle = '#100803'; x.fillRect(790, 846, 120, 16); line([800, 862, 796, 900], 10, '#100803'); line([900, 862, 904, 900], 10, '#100803'); // stool
+  rimPerson(840, 900, 400, '#070402', 'rgba(255,170,90,.9)', { sit: true, beard: true, robe: true, cloak: true, laurel: true, laurelCol: '#2a1a08', arm: 0.62 + 0.05 * Math.sin(t * 5), bend: 0.5 }, [5, -3]);
   line([1010, 640, 1040, 690], 3, '#e9dcc6');
   lamp(1240, 690, 0.9, t);
   shade(960, 540, 1200, 0.3 + 0.4 * dim);
@@ -27,20 +28,19 @@ function sceneFrontier(t) {
   if (sh.i === 0) { // the march through snow
     vgrad([[0, '#3a4452'], [0.6, '#7a8694'], [1, '#d6dce2']]);
     x.save(); cam(t, [[sh.s, 1.0, 960, 540], [sh.s, 1.1, 1100, 580, sh.e - sh.s]]);
-    ridge(41, 600, 220, 0.0014, '#5a6676'); ridge(42, 700, 140, 0.002, '#46505e');
-    forest(43, 760, 60, -200, W + 200, 120, 240, '#2a323c', 0.6);
+    landscape(41, 780, 5, '#a8b4c2', '#2a323c', { haze: '225,232,240', amp: 280, trees: true, snow: true, blur: 6 });
     x.fillStyle = '#c8d0d8'; x.fillRect(-400, 800, W + 800, 400);
     legion(t, 860, 20, 110, '#141a20', null, 44, 50, -200, W + 200, 110);
     standard(700 + (t - sh.s) * 50, 880, 380, '#0e1216', t); standard(1300 + (t - sh.s) * 50, 880, 400, '#0e1216', t + 2);
     legion(t, 1010, 12, 200, '#080a0c', 'rgba(255,255,255,.4)', 45, 80, -300, W + 300, 190);
-    forest(46, 1120, 10, -200, W + 200, 400, 560, '#050608', 0.5);
-    x.restore();
+    x.save(); x.filter = 'blur(5px)'; forest(46, 1120, 10, -200, W + 200, 400, 560, '#050608', 0.5); x.restore();
+    x.restore(); motes(t, 40, [0, W, 0, H], '255,255,255', 0.3, 5);
     snowfall(t, 260, 120, 0.85, 1);
     const a = win(t, sh.s + 0.6, sh.e - 0.8); textC('DANUBE FRONTIER', 160, 150, '900 58px Cinzel', '#ffffff', 14, a, 'left'); textC('166 – 180 AD', 160, 210, '700 32px Cinzel', '#e6ecf2', 10, a, 'left');
   } else if (sh.i === 1) { // the camp at night beside the frozen river
     vgrad([[0, '#03050b'], [0.55, '#0c1626'], [1, '#05070c']]); stars(t, 220, 0.8, 7, 560); moon(1500, 190, 64, '#e6eaf0', 0.35);
     x.save(); cam(t, [[sh.s, 1.0, 960, 540], [C.frontier.tent - 0.2, 1.35, 980, 700, sh.e - C.frontier.tent]]);
-    ridge(51, 560, 150, 0.0016, '#0a1220'); forest(52, 600, 70, -200, W + 200, 60, 130, '#060a12', 0.5);
+    landscape(51, 610, 4, '#22324c', '#060a12', { haze: '140,170,220', hazeA: 0.22, amp: 210, trees: true, snow: true, blur: 4 });
     x.fillStyle = '#9fb0c4'; x.fillRect(-400, 610, W + 800, 90); x.fillStyle = 'rgba(255,255,255,.25)'; ell(1500, 650, 80, 8); x.fill();
     x.strokeStyle = 'rgba(40,60,80,.5)'; x.lineWidth = 2; for (let i = 0; i < 10; i++) { x.beginPath(); x.moveTo(R(i) * W, 615); x.lineTo(R(i) * W + 60, 695); x.stroke(); }
     x.fillStyle = '#0a0f18'; x.fillRect(-400, 700, W + 800, 500);
@@ -52,13 +52,13 @@ function sceneFrontier(t) {
     vgrad([[0, '#8a96a4'], [0.6, '#c8d2dc'], [1, '#e8eef2']]);
     x.save(); const shake = Math.sin(t * 40) * 3 * (sh.i === 2 ? 1 : 0); x.translate(shake, 0);
     cam(t, [[sh.s, 1.0, 960, 540], [L(3) - 0.2, 1.25, 960, 780, 2]]);
-    ridge(61, 560, 120, 0.002, '#6a7888'); forest(62, 600, 40, -200, W + 200, 80, 140, '#4a5664', 0.7);
+    landscape(61, 630, 4, '#c2ccd6', '#4a5664', { haze: '238,242,246', amp: 160, trees: true, snow: true, blur: 6 });
     x.fillStyle = '#b4c4d2'; x.fillRect(-400, 640, W + 800, 600);
     x.strokeStyle = 'rgba(40,60,80,.45)'; x.lineWidth = 3; const crack = ss(L(3), L(3) + 3, t);
     for (let i = 0; i < 9; i++) { x.beginPath(); let px = 300 + i * 170, py = 700 + R(i) * 300; x.moveTo(px, py); for (let k = 0; k < 6 * crack; k++) { px += (R(i * 9 + k) - 0.3) * 90; py += (R(i * 5 + k) - 0.5) * 60; x.lineTo(px, py); } x.stroke(); }
     const lunge = Math.sin(t * 2.4) * 30;
-    for (let i = 0; i < 9; i++) rimPerson(200 + i * 70 + lunge * (i % 2), 900 + (i % 3) * 30, 220, '#121820', 'rgba(255,255,255,.4)', { helmet: true, spear: true, shield: true, cloak: true, lean: 0.12, arm: 0.6 });
-    for (let i = 0; i < 9; i++) rimPerson(1720 - i * 70 - lunge * (i % 2), 900 + (i % 3) * 30, 230, '#1a1410', 'rgba(255,255,255,.35)', { dir: -1, beard: true, cloak: true, lean: 0.12, arm: 0.8 });
+    for (let i = 0; i < 6; i++) rimPerson(240 + i * 105 + lunge * (i % 2), 880 + (i % 3) * 40, 230 + (i % 3) * 20, '#121820', 'rgba(255,255,255,.55)', { helmet: true, spear: true, shield: true, cloak: true, lean: 0.1, arm: 0.6, walk: t * 4 + i, wind: t * 3 + i });
+    for (let i = 0; i < 6; i++) rimPerson(1680 - i * 105 - lunge * (i % 2), 880 + (i % 3) * 40, 240 + (i % 3) * 20, '#1a1410', 'rgba(255,255,255,.5)', { dir: -1, beard: true, hair: true, cloak: true, lean: 0.1, arm: 0.9, sword: true, walk: t * 4 + i + 1, wind: t * 3 + i });
     x.restore();
     snowfall(t, 400, 380, 0.85, 9, 1.2);
   } else if (sh.i === 3 || sh.i === 6) { // by night, he wrote
@@ -91,7 +91,7 @@ function sceneFrontier(t) {
   } else { // dawn blizzard: Marcus stands firm
     vgrad([[0, '#2a3240'], [0.6, '#6a7686'], [1, '#c4ccd6']]);
     x.save(); cam(t, [[sh.s, 1.0, 960, 560], [sh.s, 1.22, 900, 520, sh.e - sh.s]]);
-    ridge(71, 640, 140, 0.002, '#46505e'); forest(72, 700, 40, -200, W + 200, 100, 200, '#2a323c', 0.7);
+    landscape(71, 740, 4, '#aab4c0', '#2a323c', { haze: '232,238,244', amp: 200, trees: true, snow: true, blur: 7 });
     x.fillStyle = '#d0d6de'; x.fillRect(-400, 760, W + 800, 500);
     tent(1400, 900, 1.3, '#141a22', 0.4, t);
     rimPerson(820, 1000, 560, '#06080a', 'rgba(255,255,255,.55)', { cloak: true, laurel: true, beard: true, robe: true, wind: t * 6 }, [4, -3]);
@@ -128,13 +128,14 @@ function sceneBetrayal(t) {
     vgrad([[0, '#1a0604'], [0.55, '#8a2410'], [0.8, '#e06a28'], [1, '#2a0c06']]);
     light(1400, 720, 700, '255,120,50', 0.5); ell(1400, 740, 110, 110); x.fillStyle = '#ffb066'; x.fill();
     x.save(); cam(t, [[sh.s, 1.0, 960, 560], [sh.s, 1.15, 820, 520, sh.e - sh.s]]);
-    ridge(91, 820, 50, 0.0015, '#3a1008', 0.1);
+    landscape(91, 860, 4, '#d06a30', '#3a1008', { haze: '255,150,80', amp: 110, rough: 0.08, freq: 0.0009, blur: 5 });
     palm(180, 860, 420, '#140504', t); palm(1700, 860, 460, '#140504', t + 1); palm(1560, 870, 320, '#1a0604', t + 2);
     x.fillStyle = '#100403'; x.fillRect(560, 700, 520, 160);
     rimPerson(820, 700, 330, '#080202', 'rgba(255,130,60,.9)', { helmet: true, cloak: true, beard: true, arm: 1, wind: t * 2 });
     line([858, 470, 900, 330], 8, '#080202'); light(900, 330, 60, '255,200,150', 0.6);
     crowd(92, 1000, 60, -100, W + 100, 1.7, '#060101', t, 1);
-    x.restore();
+    fgGrass(t, 93, 1060, '#040101', 60, 5, 60, true);
+    x.restore(); motes(t, 60, [0, W, 200, 900], '255,170,100', 0.4, 8);
     textC('AVIDIUS CASSIUS', 160, 150, '900 56px Cinzel', '#ffe2c8', 12, win(t, sh.s + 0.4, sh.e - 0.6), 'left'); textC('GOVERNOR OF SYRIA', 160, 205, '700 28px Cinzel', '#f0c8a0', 8, win(t, sh.s + 0.8, sh.e - 0.6), 'left');
   } else if (sh.i === 3) { // map: the East turns red, the grain ships stop
     fillAll('#0a0604');
@@ -150,7 +151,7 @@ function sceneBetrayal(t) {
     const warm = ss(C.betrayal.forgive - 0.3, C.betrayal.forgive + 1.2, t);
     vgrad([[0, '#141820'], [0.6, `rgb(${lerp(60, 200, warm)},${lerp(60, 130, warm)},${lerp(70, 70, warm)})`], [1, '#0a0a0c']]);
     x.save(); cam(t, [[sh.s, 1.0, 960, 560], [C.betrayal.forgive - 0.2, 1.45, 960, 430, 2.4]]);
-    ridge(101, 700, 120, 0.002, '#1e222a'); for (let i = 0; i < 8; i++) tent(120 + i * 240, 760, 0.5, '#121418', 0.3, t);
+    landscape(101, 720, 3, '#7a7a86', '#1e222a', { haze: '210,205,210', amp: 160, blur: 5 }); for (let i = 0; i < 8; i++) tent(120 + i * 240, 760, 0.5, '#121418', 0.3, t);
     x.fillStyle = '#0e0c0c'; x.fillRect(760, 640, 400, 120); x.fillRect(-400, 760, W + 800, 500);
     standard(700, 760, 420, '#080808', t); standard(1220, 760, 420, '#080808', t + 1);
     rimPerson(960, 640, 300, '#060506', `rgba(255,${180 + 40 * warm},${110 + 40 * warm},.9)`, { laurel: true, beard: true, robe: true, cloak: true, arm: 0.7 + 0.1 * Math.sin(t * 1.5), wind: t });
@@ -214,14 +215,14 @@ function sceneCitadel(t) {
     light(960, 760, 420, '150,190,255', 0.25 * calm); x.strokeStyle = `rgba(170,200,255,${0.3 * calm})`; x.lineWidth = 3; ell(960, 800, 260, 40); x.stroke();
     rimPerson(960, 820, 360, '#050202', 'rgba(170,200,255,.8)', { laurel: true, beard: true, robe: true, cloak: true });
     x.restore();
-    smoke(t, 9, '40,10,8', 0.45, 122, 100, 700); embers(t, 70, '255,130,50', 160, 23, 1.1);
+    smoke(t, 9, '40,10,8', 0.45, 122, 100, 700); haze(600, 900, '255,110,40', 0.25); embers(t, 70, '255,130,50', 160, 23, 1.1);
   } else if (sh.i === 1) { // the citadel on the peak in the storm
     vgrad([[0, '#04060c'], [0.6, '#0e1626'], [1, '#05070c']]);
     const f = flash(t, [L(1) + 0.1, L(2) + 2.5, L(2) + 6]);
     clouds(t, 10, 80, 600, `${50 + 120 * f},${60 + 120 * f},${90 + 120 * f}`, 0.6, 31, 30);
     if (f) { x.fillStyle = `rgba(190,205,255,${0.35 * f})`; x.fillRect(0, 0, W, H); lightning(500, 0, 760, 380, Math.floor(t), f); }
     x.save(); cam(t, [[sh.s, 1.5, 960, 900, 0], [sh.s, 1.0, 960, 540, 4.5], [L(2), 1.08, 960, 520, sh.e - L(2)]]);
-    ridge(131, 980, 160, 0.0018, '#0a0e16');
+    landscape(131, 1000, 4, '#2c3c5c', '#0a0e16', { haze: '100,120,160', amp: 280, blur: 6 });
     x.fillStyle = '#080b12'; poly([560, 1100, 760, 760, 860, 640, 1000, 600, 1120, 660, 1280, 820, 1400, 1100]); x.fill();
     fortress(980, 640, 0.6, '#06080e', 1, t, 1, 'rgba(160,180,230,.45)');
     x.restore();
@@ -269,7 +270,7 @@ function sceneCitadel(t) {
     vgrad([[0, '#03050a'], [0.55, '#0e1a2c'], [1, '#04060a']]);
     stars(t, 160, 0.7, 13, 560); moon(560, 210, 76, '#ebe3d0', 0.4);
     x.save(); cam(t, [[sh.s, 1.18, 960, 620], [sh.s, 1.0, 960, 540, sh.e - sh.s]]);
-    x.save(); x.globalCompositeOperation = 'lighter'; x.fillStyle = 'rgba(255,240,210,.08)'; poly([480, 560, 640, 560, 900, 1080, 220, 1080]); x.fill(); x.restore();
+    x.save(); x.globalCompositeOperation = 'lighter'; for (let i = 0; i < 40; i++) { const yy = 700 + i * 10, w2 = 30 + i * 7, xo = Math.sin(t * 1.5 + i * 0.7) * (8 + i); x.fillStyle = `rgba(255,240,210,${0.22 * (1 - i / 40)})`; x.fillRect(560 - w2 / 2 + xo, yy, w2, 3); } x.restore();
     sea(t, 700, 26, 5, k => `rgb(${6 + k * 4},${12 + k * 5},${22 + k * 6})`, { k: 2, draw: () => promontory(1180, 860, 1.25, '#05070b', 'rgba(220,230,245,.35)') });
     spray(t, 760, 800, 3.0, 0.2, 1.5); spray(t, 1560, 820, 3.4, 1.6, 1.3); spray(t, 1180, 780, 4.1, 2.9, 1.1);
     x.restore();

@@ -1,5 +1,5 @@
 // STOA drawing engine (16:9). Everything is drawn with canvas code; render(t) is pure.
-const cv = document.getElementById('c'), x = cv.getContext('2d');
+const cv = document.getElementById('c'); let x = cv.getContext('2d');
 const W = 1920, H = 1080, PI = Math.PI, TAU = PI * 2;
 const GOLD = '#d9a441', GOLD2 = '#f6d68c', INK = '#050304', CREAM = '#efe4cf';
 const cl = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
@@ -66,10 +66,37 @@ function clouds(t, n, y0, y1, col, a, seed = 0, speed = 10, scale = 1) {
     x.fillStyle = g; x.save(); x.translate(px, py); x.scale(1.8, 0.55); x.translate(-px, -py); x.fillRect(px - r, py - r, r * 2, r * 2); x.restore();
   }
 }
-function ridge(seed, y0, amp, freq, col, rough = 0.35) {
-  x.beginPath(); x.moveTo(-400, H + 400);
-  for (let px = -400; px <= W + 400; px += 12) { const v = fbm(px * freq + seed * 13.1, seed) + rough * noise1(px * freq * 6, seed + 2); x.lineTo(px, y0 - Math.abs(v) * amp - v * amp * 0.3); }
-  x.lineTo(W + 400, H + 400); x.closePath(); x.fillStyle = col; x.fill();
+function ridge(seed, y0, amp, freq, col, rough = 0.35, edge = null) {
+  const pts = [];
+  for (let px = -400; px <= W + 400; px += 10) { const v = fbm(px * freq + seed * 13.1, seed) + rough * noise1(px * freq * 6, seed + 2) + 0.12 * noise1(px * freq * 22, seed + 5); pts.push(px, y0 - Math.abs(v) * amp - v * amp * 0.3); }
+  x.beginPath(); x.moveTo(-400, H + 400); for (let i = 0; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]); x.lineTo(W + 400, H + 400); x.closePath(); x.fillStyle = col; x.fill();
+  if (edge) { x.beginPath(); x.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]); x.strokeStyle = edge; x.lineWidth = 2; x.stroke(); }
+}
+const hexRGB = h => { const v = parseInt(h.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
+function mixHex(a, b, k) { const A = hexRGB(a), B = hexRGB(b); return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], k))).join(',')})`; }
+function haze(y0, y1, col, a) { if (a <= 0) return; const g = x.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(0.6, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(-400, y0, W + 800, y1 - y0); }
+// n mountain layers from far (hazy, blurred, pale) to near (sharp, dark), with fog between them
+function landscape(seed, base, n, far, near, o = {}) {
+  for (let i = 0; i < n; i++) {
+    const k = n === 1 ? 1 : i / (n - 1), y = base - (1 - k) * (o.rise ?? 170), amp = (o.amp ?? 210) * (1 - 0.6 * k);
+    x.save(); const bl = (o.blur ?? 5) * (1 - k); if (bl > 0.4) x.filter = `blur(${bl.toFixed(1)}px)`;
+    ridge(seed + i * 7, y, amp, (o.freq ?? 0.0015) * (1 + k * 1.3), mixHex(far, near, k), o.rough ?? 0.3, o.edge && i === n - 1 ? null : (o.edge ? `rgba(${o.edge},${0.25 * (1 - k) + 0.08})` : null));
+    if (o.trees && k > 0.3) forest(seed + i * 11, y + 6, Math.round(30 + 50 * k), -200, W + 200, 40 + 80 * k, 90 + 160 * k, mixHex(far, near, k), o.snow ? 0.5 * (1 - k * 0.5) : 0);
+    x.restore();
+    if (o.haze && i < n - 1) haze(y - amp * 0.55, y + 90, o.haze, (o.hazeA ?? 0.4) * (1 - k * 0.6));
+  }
+}
+function fgGrass(t, seed, y, col, n = 150, blur = 3, h = 70, dry = false) {
+  x.save(); if (blur) x.filter = `blur(${blur}px)`; x.fillStyle = col; x.strokeStyle = col;
+  x.beginPath(); x.moveTo(-400, H + 400); for (let px = -400; px <= W + 400; px += 40) x.lineTo(px, y + Math.sin(px * 0.01 + seed) * 12 + noise1(px * 0.02, seed) * 10); x.lineTo(W + 400, H + 400); x.closePath(); x.fill();
+  for (let k = 0; k < 7; k++) { ell(R(k * 9 + seed) * W, y + 8, 50 + R(k) * 110, 22 + R(k + 2) * 40, (R(k + 4) - 0.5) * 0.3); x.fill(); }
+  for (let i = 0; i < n; i++) { const px = R(i + seed) * (W + 200) - 100, hh = h * (0.35 + R(i * 3 + seed)), sway = Math.sin(t * 1.6 + px * 0.012) * hh * 0.18 + (dry ? hh * 0.1 : 0); x.lineWidth = 2 + R(i) * 3.5; x.beginPath(); x.moveTo(px, y + 10); x.quadraticCurveTo(px + sway * 0.4, y - hh * 0.5, px + sway, y - hh); x.stroke(); }
+  x.restore();
+}
+function motes(t, n, area, col, a = 0.6, seed = 0) {
+  x.save(); x.globalCompositeOperation = 'lighter'; const [x0, x1, y0, y1] = area, w = x1 - x0, hh = y1 - y0;
+  for (let i = 0; i < n; i++) { const px = x0 + (((R(i + seed) * w + t * (5 + R(i) * 12) + Math.sin(t * 0.6 + i) * 24) % w) + w) % w, py = y0 + (((R(i * 3 + seed) * hh - t * (3 + R(i + 2) * 9)) % hh) + hh) % hh, r = 1 + R(i * 5) * 2.6; x.globalAlpha = a * (0.25 + 0.75 * Math.abs(Math.sin(t * 1.1 + i))); x.fillStyle = `rgb(${col})`; x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill(); }
+  x.restore();
 }
 function snowfall(t, n, wind = 60, a = 0.8, seed = 0, size = 1) {
   x.save(); x.fillStyle = '#f2f4f7';
@@ -173,7 +200,7 @@ function houses(seed, base, n, x0, x1, hMin, hMax, col, winCol = null, winA = 0.
 }
 function pine(cx, base, h, col, snow = 0) {
   x.fillStyle = col; x.fillRect(cx - h * 0.025, base - h * 0.15, h * 0.05, h * 0.15);
-  for (let k = 0; k < 4; k++) { const ty = base - h * (0.18 + k * 0.2), w = h * (0.32 - k * 0.06); poly([cx - w, ty, cx + w, ty, cx, ty - h * 0.36]); x.fill(); }
+  for (let k = 0; k < 5; k++) { const ty = base - h * (0.12 + k * 0.165), w = h * (0.33 - k * 0.055), j = (R(cx * 0.1 + k) - 0.5) * w * 0.2; x.beginPath(); x.moveTo(cx - w, ty); x.quadraticCurveTo(cx - w * 0.5, ty - h * 0.05, cx - w * 0.15 + j, ty - h * 0.24); x.lineTo(cx, ty - h * 0.33); x.lineTo(cx + w * 0.15 + j, ty - h * 0.24); x.quadraticCurveTo(cx + w * 0.5, ty - h * 0.05, cx + w, ty); x.quadraticCurveTo(cx, ty + h * 0.03, cx - w, ty); x.fill(); }
   if (snow > 0) { x.fillStyle = `rgba(235,240,248,${snow})`; for (let k = 0; k < 4; k++) { const ty = base - h * (0.18 + k * 0.2), w = h * (0.32 - k * 0.06); poly([cx - w * 0.5, ty - h * 0.18, cx + w * 0.35, ty - h * 0.2, cx, ty - h * 0.36]); x.fill(); } x.fillStyle = col; }
 }
 function forest(seed, base, n, x0, x1, hMin, hMax, col, snow = 0) { for (let i = 0; i < n; i++) pine(x0 + R(i + seed) * (x1 - x0), base + R(i * 9 + seed) * 18, hMin + R(i * 3 + seed) * (hMax - hMin), col, snow); }
@@ -198,50 +225,128 @@ function standard(cx, base, h, col, t = 0) { // Roman eagle standard (aquila) wi
   ell(cx, ey - 14, 9, 11); x.fill(); x.fillRect(cx - 26, ey + 4, 52, 8);
 }
 
-// ---------- figures (silhouettes) ----------
-// opts: dir (1 right / -1 left), cloak, helmet, spear, shield, beard, laurel, walk (phase), arm (raise 0..1), lean, sit, robe
-function person(cx, base, h, col, o = {}) {
-  const d = o.dir || 1, u = h / 100, wp = o.walk ?? null;
-  x.save(); x.translate(cx, base); x.scale(d, 1); x.rotate((o.lean || 0));
-  x.fillStyle = col; x.strokeStyle = col;
-  const leg = wp === null ? 0 : Math.sin(wp) * 0.35;
-  if (!o.sit) {
-    line([-4 * u, -46 * u, -4 * u + Math.sin(leg) * 44 * u, -2 * u], 10 * u, col);
-    line([5 * u, -46 * u, 5 * u - Math.sin(leg) * 44 * u, -2 * u], 10 * u, col);
-  } else { line([-2 * u, -40 * u, 22 * u, -38 * u, 26 * u, -2 * u], 10 * u, col); }
-  // tunic / robe
-  const hem = o.robe ? -4 : o.sit ? -36 : -40;
-  poly([-16 * u, hem * u, 16 * u, hem * u, 12 * u, -78 * u, -12 * u, -80 * u]); x.fill();
-  if (o.cloak) { const fl = o.wind ? Math.sin(o.wind) * 6 * u : 0; poly([-12 * u, -80 * u, -26 * u + fl, hem * u + 4 * u, -6 * u, (hem + 2) * u, -2 * u, -76 * u]); x.fill(); }
-  // arms
-  const ra = o.arm ?? 0; // 0 = down, 1 = raised forward
-  line([8 * u, -74 * u, 8 * u + Math.cos(PI / 2 - ra * 1.6) * 34 * u * 0.9, -74 * u + Math.sin(PI / 2 - ra * 1.6) * 34 * u], 7 * u, col);
-  line([-8 * u, -74 * u, -12 * u, -42 * u], 7 * u, col);
-  // head
-  ell(1 * u, -90 * u, 9 * u, 10.5 * u); x.fill();
-  if (o.beard) { poly([-4 * u, -88 * u, 10 * u, -88 * u, 8 * u, -79 * u, 1 * u, -76 * u, -4 * u, -80 * u]); x.fill(); }
-  poly([8 * u, -94 * u, 13 * u, -89 * u, 8 * u, -87 * u]); x.fill(); // nose
-  if (o.helmet) { x.beginPath(); x.arc(1 * u, -92 * u, 11 * u, PI, 0); x.fill(); poly([-8 * u, -104 * u, 10 * u, -104 * u, 12 * u, -112 * u, -10 * u, -112 * u]); x.fill(); }
-  if (o.laurel) { x.save(); x.fillStyle = o.laurelCol || col; for (let k = 0; k < 7; k++) { const a = PI * (1.05 + k * 0.13); ell(1 * u + Math.cos(a) * 10 * u, -91 * u + Math.sin(a) * 10.5 * u, 3.4 * u, 1.4 * u, a + PI / 2); x.fill(); } x.restore(); }
-  if (o.spear) { line([16 * u, 0, 16 * u, -128 * u], 2.6 * u, col); poly([13 * u, -128 * u, 19 * u, -128 * u, 16 * u, -140 * u]); x.fill(); }
-  if (o.shield) { x.beginPath(); x.roundRect(-24 * u, -78 * u, 16 * u, 44 * u, 3 * u); x.fill(); }
-  x.restore();
+// ---------- figures ----------
+// A figure is drawn in "units": the figure is 100 units tall, feet at (0,0), facing +x.
+// opts: dir (1 right / -1 left), robe (long toga), cloak, wind (phase), windAmp, helmet, crest, spear, shield, sword,
+//       beard, laurel, laurelCol, hair, walk (phase), arm (front arm raise 0..1.2), bend, backArm, lean, sit, kneel, hood, time
+function capsule(x1, y1, x2, y2, w1, w2) {
+  const a = Math.atan2(y2 - y1, x2 - x1), nx = -Math.sin(a), ny = Math.cos(a);
+  x.beginPath(); x.moveTo(x1 + nx * w1 / 2, y1 + ny * w1 / 2); x.lineTo(x2 + nx * w2 / 2, y2 + ny * w2 / 2);
+  x.arc(x2, y2, w2 / 2, a + PI / 2, a - PI / 2, true); x.lineTo(x1 - nx * w1 / 2, y1 - ny * w1 / 2); x.arc(x1, y1, w1 / 2, a - PI / 2, a + PI / 2, true); x.fill();
 }
-// figure with rim light: draw lit offset first, then the dark body
-function rimPerson(cx, base, h, col, rim, o = {}, off = [-3, -2]) { person(cx + off[0], base + off[1], h, rim, o); person(cx, base, h, col, o); }
+function arm(sx, sy, aU, bend, lenU = 17, lenF = 15, w = 7) {
+  const ex = sx + Math.sin(aU) * lenU, ey = sy + Math.cos(aU) * lenU, aF = aU + bend, wx = ex + Math.sin(aF) * lenF, wy = ey + Math.cos(aF) * lenF;
+  capsule(sx, sy, ex, ey, w, w * 0.82); capsule(ex, ey, wx, wy, w * 0.8, w * 0.6); ell(wx + Math.sin(aF) * 2, wy + Math.cos(aF) * 2, 2.9, 3.3, -aF); x.fill();
+  return [wx, wy, aF];
+}
+function person(cx, base, h, col, o = {}) {
+  const d = o.dir || 1, u = h / 100, T = o.time ?? (typeof T_NOW === 'number' ? T_NOW : 0), wp = o.walk ?? null;
+  const sw = wp === null ? 0 : Math.sin(wp), sw2 = wp === null ? 0 : Math.cos(wp), br = 1 + 0.01 * Math.sin(T * 1.7 + cx * 0.013);
+  const wv = o.wind ?? T * 1.4, wa = o.windAmp ?? (o.wind != null ? 1 : 0.35);
+  x.save(); x.translate(cx, base); x.scale(d * u, u); if (o.lean) x.rotate(o.lean);
+  x.fillStyle = col; x.strokeStyle = col;
+  const hipY = o.sit ? -44 : o.kneel ? -30 : -50;
+  // cloak (behind everything)
+  if (o.cloak) {
+    x.beginPath(); x.moveTo(6, -80);
+    x.bezierCurveTo(-6, -84, -13 - 5 * wa * Math.sin(wv), -54, -19 - 9 * wa * Math.sin(wv * 0.7 + 1), (o.sit ? -30 : -8) + 2 * Math.sin(wv * 1.3));
+    x.quadraticCurveTo(-13 - 3 * wa * Math.sin(wv * 1.9), (o.sit ? -26 : -4) + 3 * Math.sin(wv * 1.7), -7, o.sit ? -34 : -11);
+    x.bezierCurveTo(-5, -40, -4, -64, 6, -80); x.closePath(); x.fill();
+  }
+  // back arm
+  const bA = o.backArm ?? (wp === null ? 0.12 : sw * 0.45);
+  if (!o.shield) arm(-4.5, -77, bA, 0.25);
+  // legs
+  if (o.sit) {
+    capsule(-1, -46, 22, -45, 12, 9.5); capsule(22, -45, 24, -5, 9, 6); ell(27, -3, 5.6, 2.3); x.fill();
+    capsule(2, -47, 19, -43, 11, 9); capsule(19, -43, 17, -4, 8.5, 6); ell(20, -2.5, 5.6, 2.3); x.fill();
+  } else if (o.kneel) {
+    capsule(0, -30, 18, -18, 12, 9); capsule(18, -18, 20, -3, 9, 6); capsule(-2, -30, -6, -8, 12, 9); capsule(-6, -8, -24, -4, 9, 6);
+  } else {
+    for (const [hx, s] of [[-2.5, 1], [2.5, -1]]) {
+      const th = s * sw * 0.42, kb = wp === null ? 0.05 : Math.max(0, s * sw2) * 0.55;
+      const kx = hx + Math.sin(th) * 24, ky = -50 + Math.cos(th) * 24, ax = kx + Math.sin(th - kb) * 23, ay = ky + Math.cos(th - kb) * 23;
+      capsule(hx, -50, kx, ky, 11.5, 8.2); capsule(kx, ky, ax, ay, 8, 5.4); ell(ax + 3, ay + 0.8, 5.6, 2.2, -0.05); x.fill();
+    }
+  }
+  // torso (breathing)
+  x.save(); x.translate(0, hipY); x.scale(1, br); x.translate(0, -hipY);
+  const sh = o.sit ? 6 : o.kneel ? 20 : 0; // sitting/kneeling lowers the upper body
+  x.translate(0, sh);
+  x.beginPath(); x.moveTo(-8.5, -50); x.bezierCurveTo(-11.5, -61, -12.5, -72, -9, -79.5); x.quadraticCurveTo(0, -82.5, 7.5, -80.5); x.bezierCurveTo(12.5, -74, 11.5, -62, 8.5, -50); x.closePath(); x.fill();
+  // garment
+  if (o.robe && !o.sit) { // toga / long robe with folds
+    x.beginPath(); x.moveTo(-10, -58); x.lineTo(10, -58);
+    x.bezierCurveTo(13, -40, 15 + sw * 2, -20, 15 + sw * 3, -4 - sh);
+    for (let k = 0; k <= 6; k++) x.lineTo(15 + sw * 3 - k * 5.2, -4 - sh + (k % 2 ? 1.6 : -0.4) + Math.sin(wv + k) * 0.6 * wa);
+    x.bezierCurveTo(-13, -20, -12, -40, -10, -58); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(7, -80); x.lineTo(11, -74); x.lineTo(-8, -51); x.lineTo(-12, -56); x.closePath(); x.fill(); // sinus (drape over shoulder)
+  } else if (!o.sit) { // tunic skirt
+    x.beginPath(); x.moveTo(-9.5, -57); x.lineTo(9.5, -57); x.lineTo(12.5 + sw * 2.5, -31); for (let k = 0; k <= 5; k++) x.lineTo(12.5 + sw * 2.5 - k * 5, -31 + (k % 2 ? 1.2 : 0)); x.closePath(); x.fill();
+  } else { x.beginPath(); x.moveTo(-10, -56); x.lineTo(10, -56); x.lineTo(26, -42); x.lineTo(24, -36); x.lineTo(-6, -38); x.closePath(); x.fill(); }
+  // neck + head
+  capsule(0.5, -80, 1.8, -85.5, 6.4, 5.4);
+  ell(1, -92.3, 6.3, 7.1, 0); x.fill();
+  poly([2.5, -91.5, 7.4, -92.6, 8.4, -91.4, 9.6, -88.4, 7.9, -87.9, 8.2, -86.6, 7.6, -85.6, 7.9, -84.8, 5.6, -83.1, 1, -83.6]); x.fill(); // profile: brow, nose, lips, chin
+  if (o.hair !== false && !o.helmet && !o.hood) { for (let k = 0; k < 11; k++) { const a = PI * (0.98 + k * 0.095); ell(1 + Math.cos(a) * 6.1, -92.4 + Math.sin(a) * 6.9, 1.75, 1.6); x.fill(); } }
+  if (o.beard) { x.beginPath(); x.moveTo(-1.5, -88); x.quadraticCurveTo(0, -81, 6.5, -81.5); x.quadraticCurveTo(9, -82.5, 8.6, -85.4); x.lineTo(5, -87); x.closePath(); x.fill(); for (let k = 0; k < 5; k++) { ell(0.5 + k * 1.6, -82.3 + Math.sin(k) * 0.6, 1.7, 1.7); x.fill(); } }
+  if (o.helmet) { // Roman galea with crest
+    x.beginPath(); x.arc(0.8, -92.6, 7.4, PI * 0.98, PI * 2.02); x.fill();
+    poly([-6.4, -93, -9.6, -86, -5.4, -86.6]); x.fill(); poly([4.2, -92.4, 6.4, -86.2, 3.4, -85.4]); x.fill(); x.fillRect(-7, -94.2, 15.2, 1.8);
+    if (o.crest !== false) { x.beginPath(); x.moveTo(-7.5, -99); x.quadraticCurveTo(0.5, -110, 8.5, -99.5); x.quadraticCurveTo(0.5, -104, -7.5, -99); x.fill(); for (let k = 0; k < 9; k++) capsule(-6 + k * 1.7, -100.5 - Math.sin(k / 8 * PI) * 3, -6.5 + k * 1.75, -104 - Math.sin(k / 8 * PI) * 5, 1.4, 0.8); }
+  }
+  if (o.hood) { x.beginPath(); x.moveTo(-7, -84); x.quadraticCurveTo(-9, -100, 2, -101); x.quadraticCurveTo(9, -100, 8.5, -93); x.lineTo(5, -95); x.quadraticCurveTo(-1, -96, -2, -86); x.closePath(); x.fill(); }
+  if (o.laurel) { x.save(); x.fillStyle = o.laurelCol || col; for (let k = 0; k < 9; k++) { const a = PI * (0.98 + k * 0.105); ell(1 + Math.cos(a) * 6.6, -93 + Math.sin(a) * 7.4, 2.6, 1.05, a + PI / 2 + 0.5); x.fill(); } x.restore(); }
+  // front arm
+  const fa = o.arm ?? 0, aU = fa * 1.55 + (wp === null ? 0.04 : -sw * 0.42), bend = o.bend ?? (0.22 + fa * 0.35);
+  const [wx, wy] = arm(6.2, -77, aU, bend);
+  if (o.spear) { const sx2 = o.arm ? wx : 12; capsule(sx2, 2, sx2 + 0.6, -134, 1.6, 1.3); poly([sx2 - 1.6, -133, sx2 + 2.4, -133, sx2 + 0.6, -144]); x.fill(); }
+  if (o.sword) { capsule(wx, wy, wx + Math.sin(aU + bend + 0.4) * 20, wy + Math.cos(aU + bend + 0.4) * 20, 2.2, 1.2); }
+  if (o.shield) { x.beginPath(); x.moveTo(5, -79); x.quadraticCurveTo(17, -78, 18, -74); x.lineTo(18, -36); x.quadraticCurveTo(17, -32, 5, -31); x.quadraticCurveTo(9, -55, 5, -79); x.fill(); }
+  x.restore(); x.restore();
+}
+// rim light: the lit edge is the silhouette minus itself shifted away from the light
+const FIG_A = document.createElement('canvas'), FIG_B = document.createElement('canvas');
+function rimPerson(cx, base, h, col, rim, o = {}, off = [-3, -2]) {
+  person(cx, base, h, col, o);
+  if (!rim) return;
+  const S2 = Math.ceil(h * 1.75), ox = S2 / 2, oy = Math.ceil(S2 * 0.86);
+  [FIG_A, FIG_B].forEach(c => { if (c.width < S2 || c.height < S2) { c.width = Math.max(c.width, S2); c.height = Math.max(c.height, S2); } });
+  const A = FIG_A.getContext('2d'), B = FIG_B.getContext('2d'), main = x;
+  A.setTransform(1, 0, 0, 1, 0, 0); B.setTransform(1, 0, 0, 1, 0, 0); A.globalCompositeOperation = B.globalCompositeOperation = 'source-over';
+  A.clearRect(0, 0, S2, S2); B.clearRect(0, 0, S2, S2); A.lineJoin = A.lineCap = 'round';
+  x = A; person(ox, oy, h, '#fff', o); x = main;
+  const L = Math.hypot(off[0], off[1]) || 1, rw = Math.max(2.2, h * 0.014), dx = -off[0] / L * rw, dy = -off[1] / L * rw;
+  B.drawImage(FIG_A, 0, 0, S2, S2, dx, dy, S2, S2);
+  A.globalCompositeOperation = 'destination-out'; A.drawImage(FIG_B, 0, 0, S2, S2, 0, 0, S2, S2);
+  A.globalCompositeOperation = 'source-in'; A.fillStyle = rim; A.fillRect(0, 0, S2, S2);
+  x.save(); x.globalCompositeOperation = 'lighter'; x.filter = `blur(${Math.max(2, h * 0.012)}px)`; x.globalAlpha = 0.9;
+  x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2); x.filter = 'none'; x.globalAlpha = 1;
+  x.globalCompositeOperation = 'source-over'; x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2);
+  // soft fill light across the lit side of the body, for volume
+  A.globalCompositeOperation = 'source-over'; A.clearRect(0, 0, S2, S2); x = A; person(ox, oy, h, '#fff', o); x = main;
+  const lx = ox + off[0] / L * h * 0.32, ly = oy - h * 0.55 + off[1] / L * h * 0.32, g = A.createRadialGradient(lx, ly, 0, lx, ly, h * 0.55);
+  g.addColorStop(0, rim); g.addColorStop(1, 'rgba(0,0,0,0)'); A.globalCompositeOperation = 'source-in'; A.fillStyle = g; A.fillRect(0, 0, S2, S2);
+  x.globalAlpha = 0.16; x.drawImage(FIG_A, 0, 0, S2, S2, cx - ox, base - oy, S2, S2); x.restore();
+}
 function legion(t, y, n, s, col, rim, seed = 0, speed = 0, x0 = -100, x1 = W + 100, spacing = 70) {
   for (let i = 0; i < n; i++) {
-    const px = ((x0 + i * spacing + speed * t + (R(i + seed) - 0.5) * 12) % (x1 - x0 + spacing) + (x1 - x0 + spacing)) % (x1 - x0 + spacing) + x0 - spacing;
-    const o = { helmet: true, spear: true, shield: true, cloak: true, walk: speed ? t * 6 + i : null };
-    if (rim) person(px - 2, y - 2, s, rim, o); person(px, y, s, col, o);
+    const span = x1 - x0 + spacing, px = ((x0 + i * spacing + speed * t + (R(i + seed) - 0.5) * 12 - x0) % span + span) % span + x0 - spacing / 2;
+    const o = { helmet: true, spear: true, shield: R(i * 3 + seed) < 0.7, cloak: true, walk: speed ? t * 5.2 + i * 1.7 : null, wind: t * 1.6 + i, windAmp: 0.6, beard: R(i + 7) < 0.3, time: t + i };
+    const hh = s * (0.94 + R(i * 5 + seed) * 0.12), yy = y + (R(i * 11 + seed) - 0.5) * s * 0.05;
+    if (rim && s >= 140) rimPerson(px, yy, hh, col, rim, o); else person(px, yy, hh, col, o);
   }
 }
 function crowd(seed, base, n, x0, x1, s, col, t = 0, cheer = 0) {
   x.fillStyle = col;
   for (let i = 0; i < n; i++) {
-    const px = x0 + R(i + seed) * (x1 - x0), py = base + R(i * 3 + seed) * 40, k = s * (0.8 + R(i * 5) * 0.4), b = cheer * Math.abs(Math.sin(t * 6 + i)) * 10;
-    ell(px, py - 46 * k - b, 11 * k, 12 * k); x.fill(); poly([px - 22 * k, py + 30, px + 22 * k, py + 30, px + 16 * k, py - 32 * k - b, px - 16 * k, py - 32 * k - b]); x.fill();
-    if (cheer > 0 && R(i * 7 + seed) < 0.5) line([px + 12 * k, py - 30 * k - b, px + 22 * k, py - 70 * k - b * 2], 6 * k, col);
+    const px = x0 + R(i + seed) * (x1 - x0), py = base + R(i * 3 + seed) * 40, k = s * (0.82 + R(i * 5) * 0.36), b = cheer * Math.abs(Math.sin(t * 5 + i * 1.3)) * 8 * k;
+    x.save(); x.translate(px, py - b); x.scale(k, k);
+    x.beginPath(); x.moveTo(-24, 40); x.bezierCurveTo(-26, -6, -18, -22, 0, -24); x.bezierCurveTo(18, -22, 26, -6, 24, 40); x.closePath(); x.fill();
+    ell(1, -40, 11, 13); x.fill(); if (R(i * 13 + seed) < 0.25) { x.beginPath(); x.arc(1, -42, 13, PI, 0); x.fill(); }
+    if (cheer > 0 && R(i * 7 + seed) < 0.55) { const up = 0.6 + 0.4 * Math.sin(t * 5 + i); capsule(14, -14, 22, -44 - up * 10, 9, 6); ell(23, -50 - up * 10, 5, 6); x.fill(); }
+    if (R(i * 17 + seed) < 0.12) { capsule(-14, -10, -18, -120, 3, 2.5); }
+    x.restore();
   }
 }
 
@@ -278,10 +383,14 @@ function spray(t, cx, cy, period, seed, s = 1) { // periodic wave crash spray
     const a = -PI / 2 + (R(i + seed) - 0.5) * 1.8, v = (120 + R(i * 3 + seed) * 260) * s, px = cx + Math.cos(a) * v * k, py = cy + Math.sin(a) * v * k + 420 * k * k * s, r = (30 + R(i * 7) * 50) * s * (0.5 + k);
     x.globalAlpha = (1 - k) * 0.16; x.drawImage(glow('210,225,240'), px - r, py - r, r * 2, r * 2);
   }
-  x.fillStyle = '#e8f0f6';
-  for (let i = 0; i < 160; i++) { // droplets
-    const a = -PI / 2 + (R(i * 1.3 + seed) - 0.5) * 2.4, v = (180 + R(i * 2.9 + seed) * 520) * s, px = cx + Math.cos(a) * v * k, py = cy + Math.sin(a) * v * k + 700 * k * k * s, r = (1.2 + R(i * 5) * 3.2) * s;
-    x.globalAlpha = (1 - k) * (0.35 + 0.5 * R(i)); x.fillRect(px - r, py - r, r * 2, r * 2);
+  for (let i = 0; i < 26; i++) { // white water sheet
+    const a = -PI / 2 + (R(i * 2.1 + seed) - 0.5) * 1.4, v = (90 + R(i * 4.3 + seed) * 300) * s, px = cx + Math.cos(a) * v * k, py = cy + Math.sin(a) * v * k + 520 * k * k * s, r = (26 + R(i * 3) * 40) * s * (0.4 + k);
+    x.globalAlpha = (1 - k) * 0.22; x.drawImage(glow('235,242,248'), px - r, py - r, r * 2, r * 2);
+  }
+  x.fillStyle = '#eef4f8';
+  for (let i = 0; i < 60; i++) { // droplets
+    const a = -PI / 2 + (R(i * 1.3 + seed) - 0.5) * 2.2, v = (200 + R(i * 2.9 + seed) * 480) * s, px = cx + Math.cos(a) * v * k, py = cy + Math.sin(a) * v * k + 700 * k * k * s, r = (1.4 + R(i * 5) * 2.4) * s;
+    x.globalAlpha = (1 - k) * (0.25 + 0.4 * R(i)); x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill();
   }
   x.restore();
 }

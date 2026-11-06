@@ -48,13 +48,36 @@ function lightning(x0, y0, x1, y1, seed, a, w = 1) {
 }
 function flash(t, times, dur = 0.5) { let f = 0; times.forEach(lt => { const k = t - lt; if (k >= 0 && k < dur) f = Math.max(f, Math.exp(-k * 12) + (k > 0.12 ? 0.55 * Math.exp(-(k - 0.12) * 14) : 0)); }); return cl(f, 0, 1); }
 
+function pantheon(cx, base, s, col) {
+  x.fillStyle = col; x.fillRect(cx - 150 * s, base - 120 * s, 300 * s, 120 * s);
+  x.beginPath(); x.ellipse(cx, base - 120 * s, 150 * s, 120 * s, 0, PI, 0); x.fill();
+  x.fillRect(cx - 160 * s, base - 128 * s, 320 * s, 12 * s); x.fillRect(cx - 18 * s, base - 246 * s, 36 * s, 8 * s);
+  temple(cx - 250 * s, base, 200 * s, 160 * s, col, 6);
+}
+function triumphArch(cx, base, s, col) {
+  x.fillStyle = col; x.fillRect(cx - 110 * s, base - 170 * s, 220 * s, 170 * s); x.fillRect(cx - 124 * s, base - 200 * s, 248 * s, 32 * s);
+  x.save(); x.fillStyle = 'rgba(0,0,0,.5)';
+  [[0, 40, 84], [-78, 18, 40], [78, 18, 40]].forEach(([dx, r, hh]) => { x.beginPath(); x.moveTo(cx + (dx - r) * s, base); x.lineTo(cx + (dx - r) * s, base - hh * s); x.arc(cx + dx * s, base - hh * s, r * s, PI, 0); x.lineTo(cx + (dx + r) * s, base); x.fill(); });
+  x.restore(); person(cx, base - 200 * s, 70 * s, col, { robe: true, arm: 0.9, laurel: true, time: 0 });
+}
+function stonePine(cx, base, h, col) { x.fillStyle = col; capsule(cx, base, cx + h * 0.06, base - h * 0.72, h * 0.05, h * 0.035); for (let k = 0; k < 5; k++) { ell(cx + h * 0.06 + (k - 2) * h * 0.13, base - h * (0.8 + (k % 2) * 0.05), h * 0.18, h * 0.08); x.fill(); } }
+function statueCol(cx, base, h, col) { column(cx, base - h, base, h * 0.07, col, false); person(cx, base - h, h * 0.24, col, { robe: true, arm: 0.8, laurel: true, time: 0 }); }
+function chimneySmoke(t, cx, cy, a = 0.12) { for (let i = 0; i < 6; i++) { const p = ((t * 0.12 + i / 6) % 1), r = 14 + p * 60; const g = x.createRadialGradient(cx + p * 80 + Math.sin(t + i) * 10, cy - p * 220, 0, cx + p * 80, cy - p * 220, r); g.addColorStop(0, `rgba(160,150,150,${a * (1 - p)})`); g.addColorStop(1, 'rgba(160,150,150,0)'); x.fillStyle = g; x.fillRect(cx + p * 80 - r, cy - p * 220 - r, r * 2, r * 2); } }
 function romeSkyline(t, base, col, lit = null, seed = 0) {
-  ridge(3 + seed, base - 120, 70, 0.002, col.far, 0.2);
+  const hz = col.haze || '255,190,140';
+  ridge(3 + seed, base - 170, 90, 0.0016, col.far, 0.2);
+  for (let i = 0; i < 6; i++) { const px = 120 + i * 330 + R(i + seed) * 80; temple(px, base - 150 - R(i) * 40, 90, 50, col.far, 5); }
+  haze(base - 260, base - 60, hz, 0.35);
+  x.save(); x.filter = 'blur(1.2px)'; houses(15 + seed, base - 40, 30, -100, W + 100, 40, 110, mixHex(col.far, col.mid, 0.5), lit, 0.5); x.restore();
+  haze(base - 140, base - 20, hz, 0.22);
   houses(5 + seed, base, 34, -100, W + 100, 50, 140, col.mid, lit, 0.7);
-  temple(1450, base - 60, 360, 210, col.mid, 8); temple(520, base - 40, 260, 150, col.mid, 6);
-  colosseum(980, base, 420, 200, col.mid, lit);
-  aqueduct(-60, 600, base + 10, 150, col.mid);
-  for (let i = 0; i < 9; i++) cypress(80 + i * 230 + R(i) * 60, base + 30, 140 + R(i + 3) * 80, col.near);
+  pantheon(1640, base - 20, 0.9, col.mid); temple(1250, base - 60, 340, 200, col.mid, 8); temple(470, base - 40, 240, 150, col.mid, 6);
+  colosseum(900, base, 420, 200, col.mid, lit);
+  triumphArch(1450, base + 10, 0.8, col.mid); statueCol(700, base + 10, 300, col.mid); statueCol(1110, base + 10, 280, col.mid);
+  aqueduct(-60, 560, base + 10, 150, col.mid);
+  [[340, base - 80], [1020, base - 110], [1820, base - 60]].forEach(([sx, sy], i) => chimneySmoke(t + i * 3, sx, sy, col.smoke ?? 0.12));
+  for (let i = 0; i < 7; i++) cypress(80 + i * 290 + R(i) * 60, base + 30, 140 + R(i + 3) * 80, col.near);
+  [[260, 230], [1330, 260], [1760, 210]].forEach(([px, hh]) => stonePine(px, base + 34, hh, col.near));
   x.fillStyle = col.near; x.fillRect(-400, base + 20, W + 800, H);
 }
 function birds(t, n, y, seed, col = '#140c0c') {
@@ -69,10 +92,10 @@ function sceneHook(t) {
     light(1300, 760, 700, '255,170,90', 0.6); ell(1300, 770, 70, 70); x.fillStyle = '#ffd9a0'; x.fill();
     stars(t, 90, 0.5 * (1 - ss(0, 6, lt)), 0, 400); birds(t, 7, 380, 2);
     x.save(); cam(t, [[0, 1.0, 960, 540], [st[0] + 0.1, 1.07, 900, 560, sh.e - st[0]]]);
-    romeSkyline(t, 800, { far: '#4a2a32', mid: '#2a1820', near: '#120a0e' }, 'rgba(255,170,80,.75)');
+    romeSkyline(t, 800, { far: '#7a4a48', mid: '#2a1820', near: '#120a0e', haze: '255,160,110' }, 'rgba(255,170,80,.75)');
     x.fillStyle = '#07040a'; x.fillRect(-400, 930, W + 800, 400); for (let i = 0; i < 26; i++) column(-60 + i * 80, 860, 940, 22, '#07040a', false); x.fillRect(-400, 846, W + 800, 22);
-    rimPerson(760, 1010, 480, '#05030a', 'rgba(255,170,90,.8)', { cloak: true, laurel: true, robe: true, beard: true, dir: 1, wind: t * 2 }, [3, -3]);
-    x.restore();
+    rimPerson(760, 1010, 480, '#05030a', 'rgba(255,170,90,.9)', { cloak: true, laurel: true, laurelCol: '#3a2a10', robe: true, beard: true, dir: 1, wind: t * 1.6, windAmp: 0.6 }, [4, -3]);
+    x.restore(); motes(t, 70, [700, 1920, 200, 1000], '255,200,140', 0.45, 3);
   } else if (sh.i === 1) { // the four words + whispering shadows
     fillAll('#050203'); light(960, 540, 900, '160,20,20', 0.25);
     const heads = [[180, 560, 1, 0.9], [1740, 560, -1, 0.9], [420, 760, 1, 0.6], [1500, 760, -1, 0.6]];
@@ -83,12 +106,13 @@ function sceneHook(t) {
     vgrad([[0, '#1a0a0c'], [0.5, '#6b1e14'], [0.8, '#e0622c'], [1, '#2a0c08']]);
     light(960, 700, 800, '255,120,50', 0.5); ell(960, 720, 120, 120); x.fillStyle = '#ffb46a'; x.fill();
     x.save(); cam(t, [[sh.s, 1.0, 900, 540], [sh.s, 1.08, 1060, 560, sh.e - sh.s]]);
-    ridge(8, 760, 120, 0.0016, '#3a1410'); ridge(9, 820, 60, 0.003, '#24100c');
+    landscape(8, 830, 4, '#a2482a', '#24100c', { haze: '255,130,70', amp: 190, blur: 6 });
     legion(t, 840, 30, 70, '#160806', null, 1, 40, -100, W + 100, 66);
     legion(t, 930, 22, 110, '#0c0404', 'rgba(255,130,60,.6)', 2, 60, -150, W + 150, 98);
     standard(620, 1080, 440, '#060202', t); standard(1320, 1080, 460, '#060202', t + 1);
-    legion(t, 1100, 13, 190, '#030101', 'rgba(255,140,60,.7)', 3, 90, -250, W + 250, 170);
-    x.restore(); smoke(t, 5, '120,40,20', 0.18, 5, 700, 1000);
+    legion(t, 1100, 13, 190, '#030101', 'rgba(255,140,60,.8)', 3, 90, -250, W + 250, 170);
+    fgGrass(t, 5, 1060, '#030101', 100, 4, 70, true);
+    x.restore(); smoke(t, 5, '120,40,20', 0.18, 5, 700, 1000); motes(t, 60, [0, W, 300, 1000], '255,170,90', 0.4, 9);
   } else if (sh.i === 3) { // the fog of the battlefield clears to one man
     vgrad([[0, '#0c0a0c'], [0.6, '#2a2224'], [1, '#0a0808']]);
     x.save(); cam(t, [[sh.s, 1.0, 960, 560], [sh.s, 1.18, 960, 600, sh.e - sh.s]]);
@@ -96,7 +120,8 @@ function sceneHook(t) {
     const fade = 1 - ss(sh.s, sh.s + 2.5, t);
     x.globalAlpha = fade; legion(t, 900, 16, 120, '#0e0a0a', null, 7, 0, -100, W + 100, 130); x.globalAlpha = 1;
     for (let i = 0; i < 14; i++) line([200 + i * 120 + R(i) * 40, 1000, 190 + i * 120 + R(i) * 40 + (R(i + 1) - 0.5) * 60, 760 + R(i + 2) * 80], 5, '#0a0707');
-    rimPerson(960, 1000, 360, '#050304', 'rgba(230,210,180,.6)', { cloak: true, laurel: true, beard: true, robe: true, wind: t * 2 });
+    rimPerson(960, 1000, 360, '#050304', 'rgba(230,210,180,.75)', { cloak: true, laurel: true, beard: true, robe: true, wind: t * 1.5 });
+    fgGrass(t, 7, 1040, '#050404', 120, 5, 80, true);
     x.restore(); smoke(t, 9, '140,130,130', 0.22, 8, 600, 1080);
   } else { // the mind: storm inside a head; then a fortress rises within
     fillAll('#030203');
@@ -151,7 +176,7 @@ function sceneRome(t) {
     if (f) { x.fillStyle = `rgba(220,220,255,${0.4 * f})`; x.fillRect(0, 0, W, H); lightning(400, 0, 560, 640, 13, f); }
     birds(t, 9, 260, 5, dark ? '#0a0a0c' : '#2a1410');
     x.save(); cam(t, sh.i === 0 ? [[sh.s, 1.12, 700, 560], [sh.s, 1.0, 1100, 540, sh.e - sh.s]] : [[sh.s, 1.0, 960, 540], [sh.s, 1.1, 980, 600, sh.e - sh.s]]);
-    romeSkyline(t, 830, dark ? { far: '#1c1a20', mid: '#121014', near: '#08070a' } : { far: '#8a5a52', mid: '#4a2c2c', near: '#1e1214' }, dark ? 'rgba(255,170,80,.6)' : null, 4);
+    romeSkyline(t, 830, dark ? { far: '#2a2630', mid: '#121014', near: '#08070a', haze: '120,110,130' } : { far: '#b07a62', mid: '#4a2c2c', near: '#1e1214', haze: '255,200,150' }, dark ? 'rgba(255,170,80,.6)' : 'rgba(255,190,110,.35)', 4);
     x.restore();
     if (sh.i === 0) { const a = win(t, sh.s + 0.4, sh.e - 0.8, 0.6, 0.6); textC('ROMA', 160, 150, '900 64px Cinzel', '#fff1d6', 18, a, 'left'); textC('161 AD', 160, 215, '700 34px Cinzel', '#f3d6a6', 10, a, 'left'); x.globalAlpha = a; x.fillStyle = GOLD; x.fillRect(160, 250, 220 * ss(sh.s + 0.4, sh.s + 1.4, t), 3); x.globalAlpha = 1; }
   } else if (sh.i === 1) { // the new emperor on the temple steps
@@ -165,7 +190,7 @@ function sceneRome(t) {
     rimPerson(960, 640, 300, '#120606', 'rgba(255,200,130,.9)', { laurel: true, laurelCol: '#d9a441', robe: true, beard: true, cloak: true, arm: 0.3 + 0.1 * Math.sin(t), wind: t });
     crowd(3, 1000, 70, -100, W + 100, 1.6, '#0a0404', t, 1 - ss(C.rome.never - 0.4, C.rome.never + 0.6, t));
     x.restore();
-    embers(t, 20, '255,200,120', 50, 2, 0.6);
+    embers(t, 20, '255,200,120', 50, 2, 0.6); motes(t, 50, [300, 1600, 100, 900], '255,220,170', 0.35, 4);
   } else if (sh.i === 2) { // flashback: Hadrian names the boy Verissimus (sepia)
     vgrad([[0, '#2b2015'], [1, '#120c07']]); light(760, 380, 800, '255,210,150', 0.35);
     x.save(); cam(t, [[sh.s, 1.05, 960, 560], [sh.s, 1.14, 880, 560, sh.e - sh.s]]);
@@ -190,7 +215,7 @@ function sceneRome(t) {
     rimPerson(wx + 170, 900, 330, '#080605', 'rgba(255,220,160,.6)', { robe: true, beard: true, walk: t * 3.2 + 1.2, dir: -1, arm: 0.35 });
     scroll(1500, 870, 120, 30, '#c9b48c', 0.9);
     x.restore();
-    embers(t, 30, '255,230,190', 20, 7, 0.5);
+    motes(t, 160, [0, W, 100, 950], '255,225,175', 0.55, 6); embers(t, 20, '255,230,190', 20, 7, 0.4);
   } else if (sh.i === 5) { // floods, famine, rebellion, war — four panels
     fillAll('#050303');
     const labels = ['FLOODS', 'FAMINE', 'REBELLION', 'WAR'], pw = W / 4;
@@ -238,11 +263,12 @@ function sceneplague(t) {
     vgrad([[0, '#0f1414'], [0.6, '#3a4a38'], [0.8, '#6a6a40'], [1, '#141410']]);
     light(1500, 640, 700, '180,200,110', 0.25);
     x.save(); cam(t, [[sh.s, 1.0, 960, 540], [sh.s, 1.1, 800, 560, sh.e - sh.s]]);
-    ridge(31, 700, 110, 0.0018, '#1e2620'); ridge(32, 780, 50, 0.003, '#141a16');
+    landscape(31, 800, 4, '#6e7e52', '#141a16', { haze: '170,195,120', amp: 180, blur: 5 });
     x.fillStyle = '#0c0f0c'; x.fillRect(-400, 840, W + 800, 400);
     x.strokeStyle = 'rgba(200,200,160,.12)'; x.lineWidth = 6; x.beginPath(); x.moveTo(-200, 900); x.quadraticCurveTo(900, 820, 2200, 880); x.stroke();
     legion(t, 900, 18, 120, '#060806', 'rgba(190,210,140,.4)', 11, -45, -200, W + 200, 115);
     standard(800 - (t - sh.s) * 45, 900, 300, '#050605', t);
+    fgGrass(t, 33, 1010, '#040504', 130, 4, 70, true);
     x.restore();
     smoke(t, 9, '110,150,70', 0.22, 14, 500, 1000, 250, 520);
   } else if (sh.i === 1) { // spreading across the map
@@ -299,6 +325,6 @@ function sceneplague(t) {
     const k = ss(sh.s, sh.s + 3, t);
     vgrad([[0, `rgb(${lerp(10, 40, k)},${lerp(10, 30, k)},${lerp(14, 50, k)})`], [0.7, `rgb(${lerp(30, 230, k)},${lerp(20, 140, k)},${lerp(14, 70, k)})`], [1, '#140a06']]);
     light(960, 780, 900, '255,190,110', 0.6 * k); godrays(960, 820, 13, 1300, '255,210,150', 0.12 * k, t, 2.4, -PI / 2);
-    romeSkyline(t, 860, { far: '#3a2420', mid: '#1e1212', near: '#0c0808' }, null, 9);
+    romeSkyline(t, 860, { far: '#5a3a2a', mid: '#1e1212', near: '#0c0808', haze: '255,180,120' }, 'rgba(255,170,90,.5)', 9); motes(t, 80, [0, W, 300, 900], '255,210,150', 0.4, 12);
   }
 }
