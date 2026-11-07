@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hatalı Hayatlar · Klip</title>
+<link rel="stylesheet" href="../../assets/fonts/fonts.css">
+<style>
+html,body{margin:0;height:100%;background:#050202;color:#eadfcf;font-family:Inter,system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+canvas{width:min(96vw,calc(84vh*16/9));aspect-ratio:16/9;box-shadow:0 0 0 1px #c2541a44,0 24px 70px #000}
+#ui{display:flex;gap:10px;align-items:center;width:min(96vw,calc(84vh*16/9));font-size:13px}
+button{background:#d96a2a;color:#120604;border:0;border-radius:8px;padding:8px 14px;font-weight:800;cursor:pointer}
+input{flex:1;accent-color:#d96a2a}
+body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{width:100vw;box-shadow:none}
+</style></head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="ui"><button id="pp">Oynat</button><input id="sl" type="range" min="0" max="170" step="0.033" value="0"><span id="tm">0:00</span></div>
+<audio id="au" src="song.wav" preload="auto"></audio>
+<script>const capMode = location.search.includes('capture=1'); if (capMode) document.body.classList.add('cap'); let T_NOW = 0;</script>
+<script src="music.js"></script>
+<script src="../../bolumler/02-inner-citadel/engine.js"></script>
+<script src="clip.js"></script>
+<script src="scenes.js"></script>
+<script>
+// ---------- edit: post effects ----------
+const BLOOM = document.createElement('canvas'); BLOOM.width = 480; BLOOM.height = 270; const bctx = BLOOM.getContext('2d');
+const TMP = document.createElement('canvas'); TMP.width = W; TMP.height = H; const tctx = TMP.getContext('2d');
+const LETTERBOX = { intro: 1, verse1: 1, dip: 1, build: 0.4, drop1: 0, verse2: 1, drop2: 0, break: 1, rise: 0, calm: 1, final: 0, outro: 1 };
+function letterbox(t) { let v = 0; for (const s of SEC) { const w = ss(s.a - 0.25, s.a + 0.35, t) * (1 - ss(s.b - 0.25, s.b + 0.35, t)); v += w * LETTERBOX[s.n]; } return cl(v, 0, 1); }
+function render(t) {
+  t = cl(t, 0, DUR - 1e-3); T_NOW = t;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.filter = 'none'; x.shadowBlur = 0; x.letterSpacing = '0px';
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+  const s = secAt(t), loud = DROPS.includes(s.n) || s.n === 'build', kp = kickP(t), e = energy(t);
+  // beat-driven camera: zoom punch + shake on kicks (stronger in the loud sections)
+  const punch = 1 + (loud ? 0.045 : 0.012) * kp, sh = (loud ? 14 : 3) * kp + (loud ? 2 * e : 0);
+  x.save(); x.translate(W / 2 + Math.sin(t * 91) * sh, H / 2 + Math.cos(t * 73) * sh); x.scale(punch, punch); x.translate(-W / 2, -H / 2);
+  SCN[s.n](t);
+  x.restore();
+  // RGB split on hard kicks
+  if (loud && kp > 0.35) {
+    tctx.globalCompositeOperation = 'copy'; tctx.drawImage(cv, 0, 0);
+    x.save(); x.globalCompositeOperation = 'lighter'; const d = 10 * kp;
+    x.globalAlpha = 0.16 * kp; x.filter = 'sepia(1) saturate(6) hue-rotate(-40deg)'; x.drawImage(TMP, d, 0);
+    x.filter = 'sepia(1) saturate(6) hue-rotate(170deg)'; x.drawImage(TMP, -d, 0); x.restore();
+  }
+  // bloom + fire grade
+  bctx.filter = 'brightness(0.9) contrast(2.2) saturate(1.3) blur(9px)'; bctx.clearRect(0, 0, 480, 270); bctx.drawImage(cv, 0, 0, 480, 270);
+  x.save(); x.globalCompositeOperation = 'screen'; x.globalAlpha = (loud ? 0.26 : 0.42) + 0.12 * kp; x.drawImage(BLOOM, 0, 0, W, H);
+  x.globalCompositeOperation = 'soft-light'; x.globalAlpha = loud ? 0.18 : 0.3; x.fillStyle = s.n === 'calm' || s.n === 'verse2' ? '#3a4a7a' : '#d0602a'; x.fillRect(0, 0, W, H); x.restore();
+  const v = x.createRadialGradient(960, 540, 480, 960, 540, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.82)'); x.fillStyle = v; x.fillRect(0, 0, W, H);
+  x.save(); x.globalCompositeOperation = 'overlay'; x.globalAlpha = 0.55; x.drawImage(GRAIN[Math.floor(t * 24) % GRAIN.length], 0, 0, W, H); x.restore();
+  // transitions: white flash into every drop, glitch slices at every section change
+  for (const q of SEC) {
+    const k = t - q.a;
+    if (DROPS.includes(q.n) && k >= 0 && k < 0.35) { x.fillStyle = `rgba(255,236,210,${0.85 * (1 - k / 0.35)})`; x.fillRect(0, 0, W, H); }
+    if (q.a > 0 && Math.abs(k) < 0.16) { tctx.globalCompositeOperation = 'copy'; tctx.drawImage(cv, 0, 0); for (let i = 0; i < 10; i++) { const fr = Math.floor(t * 40), y = R(i + fr) * H, h2 = 20 + R(i * 3 + fr) * 110, dx = (R(i * 7 + fr) - 0.5) * 160; x.drawImage(TMP, 0, y, W, h2, dx, y, W, h2); } }
+  }
+  const lb = letterbox(t) * 132; if (lb > 0.5) { x.fillStyle = '#000'; x.fillRect(0, 0, W, lb); x.fillRect(0, H - lb, W, lb); }
+  if (t < 1.2) { x.fillStyle = `rgba(0,0,0,${1 - t / 1.2})`; x.fillRect(0, 0, W, H); }
+  if (t > DUR - 2) { x.fillStyle = `rgba(0,0,0,${ss(DUR - 2, DUR - 0.1, t)})`; x.fillRect(0, 0, W, H); }
+}
+Promise.all(['900 40px Cinzel'].map(f => document.fonts.load(f, 'HATALI'))).then(() => {
+  window.seekTo = t => { render(t); return true; };
+  render(capMode ? 0 : 50);
+  if (capMode) return;
+  let now = 0, play = false, last = null; const pp = document.getElementById('pp'), sl = document.getElementById('sl'), tm = document.getElementById('tm'), au = document.getElementById('au');
+  sl.max = DUR; const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const sync = () => { try { au.currentTime = now; play ? au.play().catch(() => {}) : au.pause(); } catch (e) {} };
+  pp.onclick = () => { play = !play; pp.textContent = play ? 'Duraklat' : 'Oynat'; last = null; sync(); };
+  sl.oninput = () => { now = +sl.value; render(now); tm.textContent = fmt(now); sync(); };
+  (function loop(ts) { if (play) { now = au.paused ? now + (last != null ? (ts - last) / 1000 : 0) : au.currentTime; if (now >= DUR) { now = 0; sync(); } render(now); sl.value = now; tm.textContent = fmt(now) + ' / ' + fmt(DUR); } last = ts; requestAnimationFrame(loop); })();
+});
+</script></body></html>
