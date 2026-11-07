@@ -19,6 +19,8 @@ body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{width:100vw;b
 <script src="../../bolumler/02-inner-citadel/engine.js"></script>
 <script src="clip.js"></script>
 <script src="scenes.js"></script>
+<script src="lyrics.js"></script>
+<script src="lyrics_engine.js"></script>
 <script>
 // ---------- edit: post effects ----------
 const BLOOM = document.createElement('canvas'); BLOOM.width = 480; BLOOM.height = 270; const bctx = BLOOM.getContext('2d');
@@ -55,6 +57,7 @@ function render(t) {
     if (q.a > 0 && Math.abs(k) < 0.16) { tctx.globalCompositeOperation = 'copy'; tctx.drawImage(cv, 0, 0); for (let i = 0; i < 10; i++) { const fr = Math.floor(t * 40), y = R(i + fr) * H, h2 = 20 + R(i * 3 + fr) * 110, dx = (R(i * 7 + fr) - 0.5) * 160; x.drawImage(TMP, 0, y, W, h2, dx, y, W, h2); } }
   }
   const lb = letterbox(t) * 132; if (lb > 0.5) { x.fillStyle = '#000'; x.fillRect(0, 0, W, lb); x.fillRect(0, H - lb, W, lb); }
+  lyrics(t);
   if (t < 1.2) { x.fillStyle = `rgba(0,0,0,${1 - t / 1.2})`; x.fillRect(0, 0, W, H); }
   if (t > DUR - 2) { x.fillStyle = `rgba(0,0,0,${ss(DUR - 2, DUR - 0.1, t)})`; x.fillRect(0, 0, W, H); }
 }
