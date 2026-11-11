@@ -92,7 +92,7 @@ function logBody(L, r, o) {
   ell(L / 2 - r * 0.15, 0, r * 0.32, r * 0.98, '#d8a86c'); ell(L / 2 - r * 0.15, 0, r * 0.2, r * 0.6, '#c4925a');
   if (o.hollow > 0) { const hw = L * 0.42 * o.hollow; rrect(-hw / 2, -r * 0.55, hw, r * 0.7, r * 0.3, '#3b2414'); }
   if (o.coins > 0) { const n = Math.floor(o.coins * 9); for (let i = 0; i < n; i++) coin(-L * 0.17 + i * L * 0.042, -r * 0.25, r * 0.22); }
-  if (o.letter > 0) scroll(L * 0.08, -r * 0.3, r * 0.011 * o.letter, 0, o.letter);
+  if (o.letter > 0) scroll(L * 0.1, -r * 0.62, r * 0.024 * o.letter, -0.08, o.letter);
   if (o.plug > 0) { const hw = L * 0.42; x.save(); x.globalAlpha = o.plug; x.translate(0, -(1 - o.plug) * r * 1.6); rrect(-hw / 2 - 4, -r * 0.62, hw + 8, r * 0.36, r * 0.18, '#b07a46'); for (const px of [-hw * 0.4, 0, hw * 0.4]) circ(px, -r * 0.45, r * 0.06, '#5b3a1e'); x.restore(); }
   if (o.glow > 0) { x.save(); x.globalAlpha = o.glow; x.globalCompositeOperation = 'lighter'; const g = x.createRadialGradient(0, -r * 0.4, 2, 0, -r * 0.4, L * 0.5); g.addColorStop(0, 'rgba(255,214,120,.8)'); g.addColorStop(1, 'rgba(255,214,120,0)'); x.fillStyle = g; x.fillRect(-L, -L, L * 2, L * 2); x.restore(); }
 }
@@ -259,7 +259,7 @@ function sSahil(t) {
   const surge = (Math.sin(T * 1.4) + 1) / 2; x.save(); x.globalAlpha = 0.8; x.beginPath(); for (let px = 0; px <= W; px += 20) x.lineTo(px, shore + 10 + px * 0.04 + surge * 26 + Math.sin(px * 0.03 + T * 2) * 5); x.lineWidth = 9; x.strokeStyle = '#f7fbff'; x.stroke(); x.restore();
   const kg = ss(C.gemiYok - 0.2, C.gemiYok + 0.4, t), kw = ss(C.dalgalar - 0.3, C.dalgalar + 1.8, t);
   person(300, 1560, 600, PEOPLE.alacakli, { dir: 1, armF: kw < 0.7 ? [2.3, 1.37] : [0.6, 0.3], look: kw > 0.7 ? 0.35 : -0.05, brow: kg * (1 - kw) * 0.8, smile: kw > 0.85 });
-  if (kg > 0 && kw < 0.5) { x.save(); x.globalAlpha = kg * (1 - kw * 2); x.setLineDash([12, 12]); x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 4; x.beginPath(); x.moveTo(700, 1010); x.lineTo(1000, 1010); x.stroke(); x.restore(); txt('gemi yok…', 850, 960, SERIF(52, 700, true), '#fff9ec', kg * (1 - kw * 2)); }
+  if (kg > 0 && kw < 0.5) { x.save(); x.globalAlpha = kg * (1 - kw * 2); x.setLineDash([12, 12]); x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 4; x.beginPath(); x.moveTo(700, 1010); x.lineTo(1000, 1010); x.stroke(); x.restore(); txt('gemi yok…', 850, 950, SERIF(58, 700, true), '#5a3a22', kg * (1 - kw * 2), 'center', { shadowCol: 'rgba(255,255,255,.6)' }); }
   if (kw > 0) { const lx = lerp(980, 620, kw), ly = lerp(1110, shore + 50, kw); log(lx, kw < 0.9 ? waveY(lx, ly, 8 * (1 - kw)) : ly, lerp(140, 280, kw), { plug: 1, rot: Math.sin(T) * 0.05 * (1 - kw) }); }
 }
 function sEv(t) {
@@ -280,7 +280,7 @@ function sEv(t) {
   log(710, 1340, 420, { plug: 1, split: sp });
   person(400, 1600, 640, PEOPLE.alacakli, { dir: 1, hold: 'axe', armF: hit ? [lerp(2.0, 1.2, sp), -0.1] : [lerp(1.1, 3.0, ss(C.eve, C.kirinca - 0.6, t)) - sw * 1.8, -0.2], axeRot: hit ? 1.5 : lerp(0, -1.2, sw), armB: [0.5, 0.4], brow: 0.3, smile: out > 0.6 });
   if (sp > 0) { for (let i = 0; i < 9; i++) { const k = ss(0.1 * i, 0.1 * i + 0.6, out); coin(710 + (i - 4) * 34 * k + Math.sin(i) * 10, 1340 - Math.sin(k * PI) * (60 + i * 8) + k * 50, 22, 1, T * 4 + i); } scroll(760, lerp(1330, 1420, out), 2, 0.2, out); }
-  if (out > 0) { x.save(); x.globalAlpha = out * 0.6; x.globalCompositeOperation = 'lighter'; const gg = x.createRadialGradient(710, 1350, 10, 710, 1350, 420); gg.addColorStop(0, 'rgba(255,220,130,.8)'); gg.addColorStop(1, 'rgba(255,220,130,0)'); x.fillStyle = gg; x.fillRect(200, 900, 900, 900); x.restore(); txt('1000 dinar + mektup', 710, 1060, SERIF(70, 700), '#ffd36b', out); }
+  if (out > 0) { x.save(); x.globalAlpha = out * 0.6; x.globalCompositeOperation = 'lighter'; const gg = x.createRadialGradient(710, 1350, 10, 710, 1350, 420); gg.addColorStop(0, 'rgba(255,220,130,.8)'); gg.addColorStop(1, 'rgba(255,220,130,0)'); x.fillStyle = gg; x.fillRect(200, 900, 900, 900); x.restore(); txt('1000 dinar + bir mektup', 540, 820, SERIF(66, 700), '#ffd36b', out); }
 }
 function sDonus(t) {
   skyGrad('#86bfe0', '#c8e3ef', '#f8e9cd', 1000); clouds(3, 200, 520); sunGlow(860, 330, 70, '#fff3cf', 0.8);
@@ -300,7 +300,7 @@ function sAyet(t) {
   sea(1420, '#163a52', '#0b2234', {}); const lx = 540 + Math.sin(T * 0.5) * 40; log(lx, waveY(lx, 1470, 8), 260, { plug: 1, glow: 0.9, rot: Math.sin(T * 1.2) * 0.04 });
   const k0 = ss(S.ayet.start + 0.1, S.ayet.start + 0.8, t), kt = ss(C.yeter - 0.8, C.yeter, t);
   txt('TALÂK SURESİ · 65/3', 540, 360, MS(34, 800), '#e2b765', k0, 'center', { shadow: false });
-  wrap(AYAT['65:3'].ar, 880, AR(92)).forEach((ln, i, a) => txt(ln, 540, 600 - (a.length - 1) * 65 + i * 130, AR(92), '#f7dfa2', k0, 'center', { rtl: true, shadowCol: 'rgba(255,210,120,.5)', blur: 30 }));
+  txt(AYAT['65:3'].ar, 540, 600, AR(76), '#f7dfa2', k0, 'center', { rtl: true, shadowCol: 'rgba(255,210,120,.5)', blur: 30 });
   txt('“' + AYAT['65:3'].tr + '”', 540, 830, SERIF(68, 400, true), '#fbf1dc', Math.max(kt, ss(S.ayet.start + 0.8, S.ayet.start + 1.5, t)), 'center', { shadow: false });
   txt('Diyanet meali', 540, 920, MS(26, 600), '#9fb1b3', k0, 'center', { shadow: false });
 }
