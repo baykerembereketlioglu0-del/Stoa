@@ -40,7 +40,8 @@ function person(cx, base, hpx, L, p = {}) {
   const legs = [[-1, legL], [1, legR]].map(([sd, [a1, a2]]) => { const hx = sd * 4.4, kx = hx + Math.sin(a1) * sd * l1, ky = hipY + Math.cos(a1) * l1, ax = kx + Math.sin(a1 + a2) * sd * l2, ay = ky + Math.cos(a1 + a2) * l2; return { sd, hx, kx, ky, ax, ay }; });
   const longBottom = L.bottomStyle === 'robe' || L.bottomStyle === 'long-skirt';
   if (!longBottom || true) for (const g of legs) { // trousers or bare legs (skirt) — shoes always
-    const legCol = L.bottomStyle === 'skirt' || L.bottomStyle === 'long-skirt' || L.bottomStyle === 'robe' ? (L.tights ?? skin) : L.bottom;
+    const legCol = L.bottomStyle === 'skirt' || L.bottomStyle === 'long-skirt' || L.bottomStyle === 'robe' ? (L.tights ?? skin) : L.bottomStyle === 'shorts' ? skin : L.bottom;
+    if (L.bottomStyle === 'shorts') { tube([g.hx, hipY, g.kx, g.ky, g.ax, g.ay - 1.2], 4.4, skin, ow); shoe(g.ax, g.ay, g.sd, L.shoes ?? '#2a2a2e', ow); tube([g.hx, hipY, lerp(g.hx, g.kx, 0.7), lerp(hipY, g.ky, 0.7)], 7.4, L.bottom, ow); continue; }
     tube([g.hx, hipY, g.kx, g.ky, g.ax, g.ay - 1.2], L.bottomStyle === 'skirt' || L.bottomStyle === 'robe' || L.bottomStyle === 'long-skirt' ? 4.2 : 6.4, legCol, ow);
     shoe(g.ax, g.ay, g.sd, L.shoes ?? '#2a2a2e', ow);
     if (L.bottomStyle === 'jeans' || L.bottomStyle === 'trousers') { x.beginPath(); x.moveTo(g.kx - 0.4 * g.sd, g.ky - 2); x.lineTo(g.kx - 0.2 * g.sd, g.ky + 2); x.lineWidth = ow * 0.6; x.strokeStyle = shadeOf(L.bottom, 0.7); x.stroke(); }
@@ -74,10 +75,16 @@ function person(cx, base, hpx, L, p = {}) {
     } else if (ts === 'tee') {
       x.beginPath(); x.moveTo(-3.2, -81); x.quadraticCurveTo(0, -77.4, 3.2, -81); x.lineWidth = ow; x.strokeStyle = OUT; x.stroke();
       if (L.print) { x.beginPath(); x.arc(0, -68, 3, 0, TAU); x.fillStyle = L.print; x.fill(); x.lineWidth = ow * 0.6; x.strokeStyle = OUT; x.stroke(); }
+    } else if (ts === 'jumper') {
+      shapeU(() => { x.beginPath(); x.moveTo(-4.6, -81.6); x.quadraticCurveTo(0, -78, 4.6, -81.6); x.lineTo(4.2, -83.2); x.quadraticCurveTo(0, -80.4, -4.2, -83.2); x.closePath(); }, shadeOf(top, 0.82), ow * 0.9);
+      x.lineWidth = ow * 0.5; x.strokeStyle = shadeOf(top, 0.68);
+      for (let k = -8; k <= 8; k += 2) { x.beginPath(); x.moveTo(k, -51.4); x.lineTo(k, -48.4); x.stroke(); }
+      for (const ky of [-70, -62]) { x.beginPath(); for (let k = -9; k <= 9; k += 2) { x.moveTo(k, ky); x.lineTo(k + 1, ky - 1.4); x.lineTo(k + 2, ky); } x.stroke(); }
     } else if (ts === 'blouse') {
       shapeU(() => { x.beginPath(); x.moveTo(-4.4, -81.4); x.lineTo(0, -77); x.lineTo(4.4, -81.4); x.lineTo(2.6, -82.4); x.lineTo(0, -79.6); x.lineTo(-2.6, -82.4); x.closePath(); }, '#fbf7ee', ow, 0.9);
     }
   }
+  if (L.scarf) { shapeU(() => { x.beginPath(); x.moveTo(-6, -82.4); x.quadraticCurveTo(0, -77.6, 6, -82.4); x.lineTo(6.4, -79); x.quadraticCurveTo(0, -74.6, -6.4, -79); x.closePath(); }, L.scarf, ow); shapeU(() => { x.beginPath(); x.moveTo(2, -78.6); x.lineTo(5.4, -78.4); x.lineTo(6.2, -62); x.lineTo(2.6, -62.4); x.closePath(); }, shadeOf(L.scarf, 0.9), ow); x.lineWidth = ow * 0.6; x.strokeStyle = OUT; for (const fx of [3, 4.2, 5.4]) { x.beginPath(); x.moveTo(fx, -62.2); x.lineTo(fx + 0.2, -60.4); x.stroke(); } }
   if (L.bands) { for (const sd of side) shapeU(() => { x.beginPath(); x.moveTo(sd * 0.3, -80.6); x.lineTo(sd * 2.3, -80.6); x.lineTo(sd * 2.5, -73.6); x.lineTo(sd * 0.3, -73.8); x.closePath(); }, '#fbf7ee', ow * 0.8, 0.92); }
   // ---- arms ----
   const sleeve = L.sleeve ?? top, armW = ts === 'robe' ? 6.4 : 5.2, shY = -77;
@@ -124,6 +131,7 @@ function person(cx, base, hpx, L, p = {}) {
   else if (hs === 'long' || hs === 'bob') shapeU(() => { x.beginPath(); x.moveTo(-8.2, -86); x.bezierCurveTo(-9.6, -101, 9.6, -101, 8.2, -86); x.quadraticCurveTo(7.6, -94, 3.6, -96.6); x.quadraticCurveTo(-1, -95, -4, -97.2); x.quadraticCurveTo(-7.6, -94.4, -8.2, -86); x.closePath(); }, hc, ow);
   else if (hs === 'buzz') shapeU(() => { x.beginPath(); x.moveTo(-7.6, -92); x.bezierCurveTo(-7.8, -100.6, 7.8, -100.6, 7.6, -92); x.quadraticCurveTo(0, -98, -7.6, -92); x.closePath(); }, hc, ow);
   else if (hs === 'bald') shapeU(() => { x.beginPath(); x.moveTo(-7.7, -88); x.quadraticCurveTo(-8.4, -93, -6.6, -95); x.lineTo(-6.2, -90); x.closePath(); x.moveTo(7.7, -88); x.quadraticCurveTo(8.4, -93, 6.6, -95); x.lineTo(6.2, -90); x.closePath(); }, hc, ow);
+  else if (hs === 'beanie') { shapeU(() => { x.beginPath(); x.moveTo(-8.2, -92.4); x.bezierCurveTo(-8.6, -105, 8.6, -105, 8.2, -92.4); x.closePath(); }, L.capCol ?? '#c0392b', ow); shapeU(() => { x.beginPath(); x.roundRect(-8.6, -94.6, 17.2, 3.4, 1.2); }, shadeOf(L.capCol ?? '#c0392b', 0.8), ow); shapeU(() => { x.beginPath(); x.arc(0, -104.4, 2.6, 0, TAU); }, '#f4efe4', ow); if (L.hairLong) shapeU(() => { x.beginPath(); x.moveTo(-8.2, -91); x.quadraticCurveTo(-9.6, -82, -8.6, -77); x.lineTo(-6.6, -78); x.quadraticCurveTo(-7.4, -85, -7, -91); x.closePath(); x.moveTo(8.2, -91); x.quadraticCurveTo(9.6, -82, 8.6, -77); x.lineTo(6.6, -78); x.quadraticCurveTo(7.4, -85, 7, -91); x.closePath(); }, L.hair, ow); }
   else if (hs === 'cap') { shapeU(() => { x.beginPath(); x.moveTo(-7.9, -93); x.bezierCurveTo(-8, -103, 8, -103, 7.9, -93); x.closePath(); }, L.capCol ?? '#c0392b', ow); shapeU(() => { x.beginPath(); x.moveTo(-1, -93.5); x.lineTo(11, -93); x.quadraticCurveTo(10, -91.6, 4, -92.2); x.closePath(); }, shadeOf(L.capCol ?? '#c0392b', 0.8), ow); }
   if (L.glasses) { x.lineWidth = ow * 0.9; x.strokeStyle = L.glassesCol ?? OUT; for (const sd of side) { x.beginPath(); x.roundRect(sd * 2.9 - 2.1, -93.1, 4.2, 3.1, 1); x.stroke(); } x.beginPath(); x.moveTo(-0.8, -91.8); x.lineTo(0.8, -91.8); x.stroke(); }
   if (L.bar) { x.save(); x.rotate(-0.03); x.beginPath(); x.roundRect(-8.6, -93.8, 17.2, 4.4, 0.6); x.fillStyle = '#121212'; x.fill(); x.restore(); }
@@ -138,6 +146,9 @@ const LOOK = {
   prosecutor: { seed: 2, skin: HSKIN[2], hair: HAIRC[0], hairStyle: 'slick', top: '#2f4870', topStyle: 'suit', shirt: '#fbf7ee', tie: '#c0392b', bottom: '#2f4870', bottomStyle: 'trousers', shoes: '#3a2418' },
   expert: { seed: 3, skin: HSKIN[4], hair: HAIRC[0], hairStyle: 'curly', top: '#b8873f', topStyle: 'cardigan', shirt: '#f4efe4', bottom: '#4a5568', bottomStyle: 'skirt', tights: '#2e2a30', shoes: '#5a2a24', glasses: true, glassesCol: '#2b1d17' },
   sam: { seed: 4, skin: HSKIN[0], hair: HAIRC[4], hairStyle: 'short', top: '#3f8f86', topStyle: 'hoodie', bottom: '#4a6a9a', bottomStyle: 'jeans', shoes: '#f2ece0', blush: true },
+  mia: { seed: 6, skin: HSKIN[1], hair: HAIRC[1], hairStyle: 'beanie', hairLong: true, capCol: '#c0392b', top: '#e8b84a', topStyle: 'jumper', scarf: '#3d6aa8', bottom: '#4a4060', bottomStyle: 'trousers', shoes: '#7a4a2a', blush: true },
+  dan: { seed: 7, skin: HSKIN[2], hair: HAIRC[2], hairStyle: 'short', top: '#4fb0a0', topStyle: 'tee', print: '#f2c94c', bottom: '#e07b39', bottomStyle: 'shorts', shoes: '#f2ece0' },
+  danJumper: { seed: 7, skin: HSKIN[2], hair: HAIRC[2], hairStyle: 'short', top: '#8a5a9a', topStyle: 'jumper', bottom: '#e07b39', bottomStyle: 'shorts', shoes: '#f2ece0' },
   jordan: { seed: 5, skin: HSKIN[3], hair: HAIRC[0], hairStyle: 'buzz', top: '#d9a441', topStyle: 'tee', print: '#c0392b', bottom: '#3a3f4a', bottomStyle: 'jeans', shoes: '#1f1f22', beard: true },
 };
 function defendantLook(i) {
