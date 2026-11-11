@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Court of Small Crimes · Case 001</title>
+<link rel="stylesheet" href="../../../assets/fonts/fonts.css">
+<style>
+html,body{margin:0;height:100%;background:#1b1714;color:#eee;font-family:system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+canvas{height:min(86vh,1920px);aspect-ratio:9/16;box-shadow:0 20px 60px #000}
+#ui{display:flex;gap:10px;align-items:center;width:min(92vw,480px);font-size:13px}
+button{background:#c2413a;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:800;cursor:pointer}input{flex:1;accent-color:#c2413a}
+body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{height:100vh;box-shadow:none}
+</style></head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="ui"><button id="pp">Play</button><input id="sl" type="range" min="0" max="60" step="0.033" value="0"><span id="tm">0.0</span></div>
+<audio id="a1" src="narration.wav" preload="auto"></audio><audio id="a2" src="soundtrack.wav" preload="auto"></audio>
+<script src="../cast.js"></script>
+<script src="script.js"></script>
+<script src="timeline.js"></script>
+<script src="../sketch.js"></script>
+<script>
+const capMode = location.search.includes('capture=1'); if (capMode) document.body.classList.add('cap');
+const TL = window.TIMELINE || EP.estimateTimeline(), LN = TL.lines, DUR = TL.duration, C = EP.cues(TL), S = C.scenes; window.DURATION = DUR;
+const sceneOf = t => { for (const n of EP.SCENES) if (t >= S[n].start && t < S[n].end) return n; return 'outro'; };
+function talk(who, t) { for (const l of LN) if (l.who === who && t >= l.start - 0.05 && t <= l.end + 0.05) { for (const w of l.words) if (t >= w[1] && t <= w[2]) return 0.35 + 0.65 * Math.abs(Math.sin(t * 17)); return 0.08; } return 0; }
+function camera(t, keys) { let z = keys[0][1], fx = keys[0][2], fy = keys[0][3]; for (let i = 1; i < keys.length; i++) { const k = keys[i], e = ss(k[0], k[0] + (k[4] ?? 0.8), t); z = lerp(z, k[1], e); fx = lerp(fx, k[2], e); fy = lerp(fy, k[3], e); } x.translate(W / 2, H / 2); x.scale(z, z); x.translate(-fx, -fy); }
+const dockPos = [...Array(12)].map((_, i) => [140 + (i % 4) * 268 + (Math.floor(i / 4) % 2) * 40, 1080 + Math.floor(i / 4) * 150]);
+
+// ---------- scenes ----------
+function sTitle(t) {
+  courtBack(t);
+  const hit1 = C.rise - 0.25, hit2 = C.title, up = (h) => t < h ? -0.9 * ss(h - 0.6, h - 0.1, t) : -0.9 * (1 - ss(h, h + 0.08, t)) * 0 ;
+  // the gavel on its block
+  shape([300, 1180, 780, 1180, 760, 1260, 320, 1260], { fill: PAL.woodDark, seed: 601 });
+  const ang = t < hit1 ? -0.8 * ss(0, hit1 - 0.05, t) : t < hit2 - 0.5 ? -0.8 * ss(hit1 + 0.1, hit2 - 0.55, t) : t < hit2 ? -0.8 * (1 - ss(hit2 - 0.12, hit2, t)) - 0.0 : 0;
+  x.save(); x.translate(760, 1150); x.rotate(ang); shape([-14, 0, 14, 0, 12, -330, -12, -330], { fill: PAL.wood, seed: 602 }); shape([-110, -320, 110, -320, 110, -410, -110, -410], { fill: PAL.woodDark, seed: 603 }); sk([-110, -345, 110, -345], 4, PAL.mustard, 604); sk([-110, -385, 110, -385], 4, PAL.mustard, 605); x.restore();
+  for (const h of [hit1, hit2]) if (t > h && t < h + 0.35) { const k = (t - h) / 0.35; for (let i = 0; i < 8; i++) { const a = PI + i / 7 * PI; sk([540 + Math.cos(a) * (120 + k * 90), 1180 + Math.sin(a) * (40 + k * 60), 540 + Math.cos(a) * (170 + k * 140), 1180 + Math.sin(a) * (60 + k * 90)], 5, PAL.ink, 610 + i); } }
+  txt('THE COURT OF', 540, 470, '64px "Special Elite"', PAL.ink, ss(C.rise, C.rise + 0.4, t), 'center', 8);
+  stamp('SMALL CRIMES', 540, 640, 190, ss(hit2, hit2 + 0.18, t), -0.06);
+  txt('every case backed by real research', 540, 820, '54px Caveat', PAL.oxblood, ss(hit2 + 0.4, hit2 + 1, t), 'center', 0, -0.03);
+}
+function sDock(t) {
+  courtBack(t);
+  x.save(); camera(t, [[S.dock.start, 1.08, 540, 860], [S.dock.start, 1.0, 540, 960, 3]]);
+  judgeAgatha(540, 520, 1.15, talk('judge', t));
+  bench(540, 640, 900, 300);
+  // the dock
+  dockPos.forEach(([px, py], i) => defendant(px, py, 0.9, i + 1, ss(C.defendants + i * 0.07, C.defendants + i * 0.07 + 0.25, t)));
+  shape([40, 1290, 1040, 1290, 1040, 1420, 40, 1420], { fill: PAL.wood, seed: 620, hatchCol: 'rgba(40,20,10,.25)', hatchSp: 10 });
+  for (let i = 0; i < 9; i++) sk([90 + i * 115, 1290, 90 + i * 115, 1180], 7, PAL.woodDark, 621 + i);
+  sk([40, 1180, 1040, 1180], 10, PAL.woodDark, 640);
+  x.restore();
+  const k = ss(LN[1].start, LN[1].start + 0.6, t);
+  if (k > 0) { x.save(); x.translate(540, 300); x.rotate(-0.025); shape([-400, -60, 400, -60, 400, 60, -400, 60], { fill: PAL.cream, seed: 650, hatch: false, lw: 3 }); x.restore(); const s2 = 'CASE Nº 001 — THE GROUP CHAT'; txt(s2.slice(0, Math.ceil(s2.length * k)), 540, 302, '50px "Special Elite"', PAL.ink, 1, 'center', 2, -0.025); }
+}
+function sEvidence(t) {
+  courtBack(t);
+  x.save(); camera(t, [[S.evidence.start, 1.0, 540, 960], [C.seenStart - 0.2, 1.08, 600, 860, 1.2]]);
+  const sc = phone(650, 700, 720, 960);
+  txt('SATURDAY CREW', sc.x0 + 30, sc.y0 + 60, '48px "Bebas Neue"', PAL.ink, 1, 'left', 2); txt('12 members', sc.x0 + 30, sc.y0 + 104, '34px "Special Elite"', PAL.charcoal, 1, 'left'); sk([sc.x0 + 10, sc.y0 + 140, sc.x1 - 10, sc.y0 + 140], 3, PAL.charcoal, 660);
+  txt('Sun 21:14', (sc.x0 + sc.x1) / 2, sc.y0 + 200, '30px "Special Elite"', PAL.charcoal, ss(C.sunday, C.sunday + 0.3, t));
+  bubble(sc.x0 + 30, sc.y0 + 250, 560, ['can anyone help me', 'move on saturday??'], false, ss(C.message - 0.1, C.message + 0.2, t), ss(C.message - 0.1, C.message + 0.35, t), 661);
+  txt('Sam', sc.x0 + 44, sc.y0 + 236, '30px Caveat', PAL.oxblood, ss(C.message - 0.1, C.message + 0.2, t), 'left');
+  const n = Math.round(12 * ss(C.seenStart + 0.1, C.seen12 + 0.3, t));
+  if (t > C.seenStart) { txt('Seen by ' + n, sc.x1 - 30, sc.y0 + 470, '40px "Special Elite"', n === 12 ? PAL.red : PAL.charcoal, 1, 'right'); for (let i = 0; i < n; i++) blob(sc.x0 + 50 + i * 46, sc.y0 + 540, 18, 18, { fill: ['#e8c0a0', '#c98e66', '#8a5a3c', '#f0d2b4', '#b07a52'][i % 5], seed: 670 + i, lw: 2.5, hatch: false }); }
+  if (t > C.zero) { const k = ss(C.zero, C.zero + 0.4, t); txt('0 replies', (sc.x0 + sc.x1) / 2, sc.y0 + 700, '72px "Bebas Neue"', PAL.red, k, 'center', 4); for (let i = 0; i < 3; i++) { const cx = sc.x0 + 160 + i * 190, cy = sc.y1 - 120 + Math.sin(t * 9 + i) * 6; blob(cx, cy, 30, 16, { fill: '#5a6a3a', seed: 680 + i, lw: 3, hatch: false }); sk([cx + 20, cy - 8, cx + 50, cy - 40 - Math.abs(Math.sin(t * 20 + i)) * 10], 3, PAL.ink, 690 + i); sk([cx - 20, cy + 10, cx - 34, cy + 34], 3, PAL.ink, 693 + i); } txt('cricket noises', (sc.x0 + sc.x1) / 2, sc.y1 - 40, '36px Caveat', PAL.charcoal, k * 0.8); }
+  x.restore();
+  foxFelix(220, 1110, 0.8, talk('prosecutor', t), { point: 0.5 + 0.3 * Math.sin(t * 3) });
+  stamp('EXHIBIT A', 820, 300, 110, ss(C.seenStart - 0.35, C.seenStart - 0.15, t), 0.1);
+}
+function sExpert(t) {
+  courtBack(t);
+  const call = LN[EP.ID.call];
+  if (t < call.end + 0.4) { x.save(); camera(t, [[S.expert.start, 1.3, 540, 620]]); judgeAgatha(540, 560, 1.15, talk('judge', t)); bench(540, 680, 900, 300); x.restore(); return; }
+  // chart board
+  shape([60, 300, 640, 300, 640, 1180, 60, 1180], { fill: '#2f3a32', seed: 701, hatchCol: 'rgba(255,255,255,.05)' });
+  txt('THE 1968 STUDY', 350, 380, '56px "Bebas Neue"', PAL.cream, 1, 'center', 3); txt('Darley & Latané', 350, 440, '40px Caveat', PAL.cream, 0.85);
+  const b1 = ss(C.eighty - 0.1, C.eighty + 0.8, t) * 0.85, b2 = ss(C.thirty - 0.1, C.thirty + 0.8, t) * 0.31, base = 1060, hMax = 520;
+  shape([130, base, 300, base, 300, base - hMax * b1 - 2, 130, base - hMax * b1 - 2], { fill: PAL.mustard, seed: 702, lineCol: PAL.cream, lw: 3 });
+  shape([400, base, 570, base, 570, base - hMax * b2 - 2, 400, base - hMax * b2 - 2], { fill: PAL.red, seed: 703, lineCol: PAL.cream, lw: 3 });
+  sk([100, base, 610, base], 4, PAL.cream, 704);
+  txt(Math.round(b1 * 100) + '%', 215, base - hMax * b1 - 50, '64px "Bebas Neue"', PAL.cream, ss(C.alone, C.eighty, t)); txt(Math.round(b2 * 100) + '%', 485, base - hMax * b2 - 50, '64px "Bebas Neue"', PAL.cream, ss(C.four - 0.3, C.thirty, t));
+  txt('alone', 215, base + 50, '44px Caveat', PAL.cream, ss(C.alone - 0.2, C.alone + 0.3, t)); txt('+ 4 others', 485, base + 50, '44px Caveat', PAL.cream, ss(C.four - 0.2, C.four + 0.3, t));
+  txt('helped', 350, 520, '40px Caveat', PAL.cream, ss(C.eighty, C.eighty + 0.5, t) * 0.8);
+  heronIngrid(830, 1000, 0.85, talk('expert', t), { pointer: 0.25 * Math.sin(t * 2) });
+  shape([640, 1200, 1050, 1200, 1050, 1400, 640, 1400], { fill: PAL.wood, seed: 710 }); txt('WITNESS', 845, 1250, '40px "Bebas Neue"', PAL.cream, 0.9, 'center', 4);
+}
+function sDiffuse(t) {
+  courtBack(t);
+  const cx = 540, cy = 760, r = 210, split = ss(C.someone - 0.1, C.someone + 1.4, t);
+  dockPos.forEach((_, i) => { const a = i / 12 * TAU - PI / 2, px = cx + Math.cos(a) * 420, py = cy + Math.sin(a) * 380; defendant(px, py - 60, 0.62, i + 1, 1); });
+  for (let i = 0; i < 12; i++) {
+    const a0 = i / 12 * TAU - PI / 2, a1 = (i + 1) / 12 * TAU - PI / 2, am = (a0 + a1) / 2, off = split * 150, px = cx + Math.cos(am) * off, py = cy + Math.sin(am) * off, rr = r * (1 - 0.35 * split);
+    const pts = [px, py]; for (let k = 0; k <= 4; k++) { const a = lerp(a0, a1, k / 4); pts.push(px + Math.cos(a) * rr, py + Math.sin(a) * rr); }
+    shape(pts, { fill: i % 2 ? PAL.mustard : '#e2b65a', seed: 720 + i, lw: 3, hatchSp: 10 });
+  }
+  txt(split < 0.5 ? '100%' : '8% each', cx, cy + (split < 0.5 ? 0 : 0), '70px "Bebas Neue"', PAL.ink, 1 - Math.abs(split - 0.5) * 0 , 'center', 3);
+  txt('RESPONSIBILITY', cx, 270, '74px "Bebas Neue"', PAL.ink, 1, 'center', 6);
+  const dk = ss(C.diffusion - 0.1, C.diffusion + 0.5, t);
+  if (dk > 0) { x.save(); x.translate(540, 1270); x.rotate(0.02); shape([-470, -70, 470, -70, 470, 70, -470, 70], { fill: PAL.cream, seed: 740, hatch: false, lw: 3 }); x.restore(); const s2 = '“DIFFUSION OF RESPONSIBILITY”'; txt(s2.slice(0, Math.ceil(s2.length * dk)), 540, 1272, '44px "Special Elite"', PAL.oxblood, 1, 'center', 1, 0.02); }
+}
+function sVerdict(t) {
+  courtBack(t);
+  const g = C.guilty, gav = t < g - 0.05 ? -0.9 * ss(S.verdict.start, g - 0.35, t) : 0.15 * Math.exp(-(t - g) * 10);
+  x.save(); camera(t, [[S.verdict.start, 1.0, 540, 900], [S.verdict.start, 1.18, 540, 820, g - S.verdict.start], [g, 1.05, 540, 900, 0.15]]);
+  judgeAgatha(540, 720, 1.45, talk('judge', t), { gavel: gav, squint: ss(S.verdict.start, g, t) });
+  bench(540, 900, 1000, 320);
+  x.restore();
+  const slump = ss(g + 0.15, g + 0.7, t); for (let i = 0; i < 6; i++) defendant(110 + i * 172, 1360, 0.68, i + 1, 1, slump);
+  shape([20, 1430, 1060, 1430, 1060, 1540, 20, 1540], { fill: PAL.wood, seed: 760 });
+  stamp('GUILTY', 540, 470, 230, ss(g + 0.03, g + 0.2, t), -0.1);
+}
+function sSentence(t) {
+  courtBack(t);
+  x.save(); camera(t, [[S.sentence.start, 1.0, 540, 960]]);
+  const sc = phone(540, 900, 820, 900);
+  txt('Direct message · Jordan', sc.x0 + 30, sc.y0 + 60, '40px "Special Elite"', PAL.ink, 1, 'left'); sk([sc.x0 + 10, sc.y0 + 100, sc.x1 - 10, sc.y0 + 100], 3, PAL.charcoal, 780);
+  bubble(sc.x0 + 100, sc.y0 + 180, 560, ['Jordan, can you help', 'me move on Saturday?'], true, ss(C.one - 0.1, C.one + 0.2, t), ss(C.one - 0.1, C.one + 0.4, t), 781);
+  const rk = ss(C.sentenceEnd - 0.25, C.sentenceEnd + 0.1, t); bubble(sc.x0 + 30, sc.y0 + 420, 470, ['Yes! What time?'], false, rk, rk, 782);
+  if (rk > 0.5) txt('replied in 40 seconds', (sc.x0 + sc.x1) / 2, sc.y0 + 600, '40px Caveat', PAL.oxblood, rk);
+  x.restore();
+  x.save(); x.translate(880, 250); judgeAgatha(0, 0, 0.5, talk('judge', t)); x.restore();
+  txt('SENTENCE', 260, 230, '80px "Bebas Neue"', PAL.oxblood, 1, 'center', 6, -0.05);
+  txt('ask ONE person, by name', 300, 320, '50px Caveat', PAL.ink, ss(C.ask - 0.2, C.ask + 0.4, t), 'center', 0, -0.05);
+}
+function sOutro(t) {
+  courtBack(t);
+  txt('YOUR VERDICT?', 540, 430, '120px "Bebas Neue"', PAL.ink, ss(C.yourVerdict - 0.2, C.yourVerdict + 0.3, t), 'center', 8);
+  stamp('GUILTY', 300, 760, 150, ss(C.guiltyQ, C.guiltyQ + 0.18, t), -0.12, PAL.red);
+  stamp('NOT GUILTY', 760, 940, 120, ss(C.notQ + 0.2, C.notQ + 0.38, t), 0.08, PAL.navy);
+  const ak = ss(C.notQ + 0.6, C.notQ + 1.1, t); txt('tell the court in the comments', 540, 1060, '58px Caveat', PAL.oxblood, ak); if (ak > 0) sk([780, 1080, 860, 1160, 830, 1160, 860, 1160, 860, 1130], 6, PAL.oxblood, 800);
+  txt('THE COURT OF SMALL CRIMES', 540, 230, '40px "Special Elite"', PAL.charcoal, 0.8, 'center', 3);
+  judgeAgatha(540, 1250, 0.45, 0); // tiny judge nod
+}
+const SCN = { title: sTitle, dock: sDock, evidence: sEvidence, expert: sExpert, diffuse: sDiffuse, verdict: sVerdict, sentence: sSentence, outro: sOutro };
+
+// ---------- court transcript captions ----------
+const CHUNKS = [];
+LN.forEach((l, li) => { let cur = [], len = 0; l.words.forEach((w, k) => { cur.push(w); len += w[0].length + 1; if (/[.?!:]$/.test(w[0]) || len > 40 || k === l.words.length - 1) { CHUNKS.push({ who: l.who, words: cur, s: cur[0][1], e: cur[cur.length - 1][2] + 0.25 }); cur = []; len = 0; } }); });
+CHUNKS.forEach((c, i) => { if (i < CHUNKS.length - 1) c.e = Math.min(c.e, CHUNKS[i + 1].s); });
+const NOCAP = new Set();
+function captions(t) {
+  const c = CHUNKS.find(c => t >= c.s - 0.05 && t < c.e); if (!c) return;
+  const y = 1560, k = ss(c.s - 0.05, c.s + 0.12, t);
+  x.save(); x.globalAlpha = k; x.translate(540, y); x.rotate(-0.012);
+  x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(-486, -96, 980, 206); x.fillStyle = PAL.white; x.fillRect(-492, -102, 980, 206);
+  x.strokeStyle = 'rgba(80,110,160,.25)'; x.lineWidth = 2; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(-492, -40 + i * 46); x.lineTo(488, -40 + i * 46); x.stroke(); }
+  x.strokeStyle = 'rgba(200,60,60,.35)'; x.beginPath(); x.moveTo(-430, -102); x.lineTo(-430, 104); x.stroke();
+  txt(CAST[c.who].label + ':', -410, -66, '34px "Special Elite"', PAL.red, 1, 'left', 2);
+  x.font = '52px "Special Elite"'; x.textBaseline = 'middle'; const sp = x.measureText(' ').width; let px = -410, py = 2;
+  for (const [w, s0, e0] of c.words) {
+    const ww = x.measureText(w).width; if (px + ww > 470) { px = -410; py += 58; }
+    if (t >= s0 && t < e0 + 0.08) { x.fillStyle = 'rgba(245,205,70,.75)'; x.fillRect(px - 6, py - 26, ww + 12, 50); }
+    if (t >= s0 - 0.02) { x.fillStyle = PAL.ink; x.fillText(w, px, py); }
+    px += ww + sp;
+  }
+  x.restore();
+}
+
+// ---------- render ----------
+const IMPACTS = C.fx.filter(f => f.type === 'gavel' || f.type === 'stamp').map(f => [f.t, f.type === 'gavel' ? 16 * f.g : 9 * f.g]);
+function render(t) {
+  t = cl(t, 0, DUR - 1e-3); T = t; BOIL = Math.floor(t * 8);
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.letterSpacing = '0px'; x.filter = 'none';
+  let sh = 0; for (const [it, a] of IMPACTS) if (t >= it && t < it + 0.6) sh += a * Math.exp(-(t - it) * 9);
+  paper();
+  x.save(); x.translate(Math.sin(t * 91) * sh, Math.cos(t * 77) * sh); SCN[sceneOf(t)](t); x.restore();
+  // scene change: a quick page-turn wipe
+  for (const n of EP.SCENES.slice(1)) { const k = (t - S[n].start) / 0.28; if (k >= 0 && k < 1) { x.fillStyle = PAL.paper2; x.fillRect(0, 0, W * (1 - easeOut(k)), H); sk([W * (1 - easeOut(k)), 0, W * (1 - easeOut(k)) + 10, H], 5, PAL.charcoal, 900); } }
+  captions(t);
+  // paper grain + vignette
+  x.save(); x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.5; x.drawImage(GRAIN[BOIL % 3], 0, 0, W, H); x.restore();
+  const v = x.createRadialGradient(540, 900, 600, 540, 960, 1250); v.addColorStop(0, 'rgba(60,40,25,0)'); v.addColorStop(1, 'rgba(60,40,25,.45)'); x.fillStyle = v; x.fillRect(0, 0, W, H);
+  if (t < 0.3) { x.fillStyle = `rgba(0,0,0,${1 - t / 0.3})`; x.fillRect(0, 0, W, H); }
+}
+Promise.all(['64px "Special Elite"', '64px "Bebas Neue"', '700 64px Caveat'].map(f => document.fonts.load(f, 'AaZz'))).then(() => {
+  window.seekTo = tt => { render(tt); return true; };
+  render(capMode ? 0 : 3.5); if (capMode) return;
+  let now = 0, play = false, last = null; const pp = document.getElementById('pp'), sl = document.getElementById('sl'), tm = document.getElementById('tm'), A = [document.getElementById('a1'), document.getElementById('a2')];
+  sl.max = DUR; const sync = () => A.forEach(a => { try { a.currentTime = now; play ? a.play().catch(() => {}) : a.pause(); } catch (e) {} });
+  pp.onclick = () => { play = !play; pp.textContent = play ? 'Pause' : 'Play'; last = null; sync(); };
+  sl.oninput = () => { now = +sl.value; render(now); tm.textContent = now.toFixed(1); sync(); };
+  (function loop(ts) { if (play) { if (last != null) now += (ts - last) / 1000; if (now >= DUR) { now = 0; sync(); } render(now); sl.value = now; tm.textContent = now.toFixed(1); } last = ts; requestAnimationFrame(loop); })();
+});
+</script></body></html>

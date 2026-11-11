@@ -8,3 +8,5 @@ bolumler/*/.voice-tmp/
 videolar/02-*.mp4
 klipler/*/song.wav
 klipler/*/*.mp4
+kanal/*/*/narration.wav
+kanal/*/*/soundtrack.wav
