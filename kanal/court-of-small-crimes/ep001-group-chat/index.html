@@ -17,6 +17,7 @@ body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{height:100vh;
 <script src="script.js"></script>
 <script src="timeline.js"></script>
 <script src="../art.js"></script>
+<script src="../human.js"></script>
 <script>
 const capMode = location.search.includes('capture=1'); if (capMode) document.body.classList.add('cap');
 const TL = window.TIMELINE || EP.estimateTimeline(), LN = TL.lines, DUR = TL.duration, C = EP.cues(TL), S = C.scenes; window.DURATION = DUR;
@@ -29,10 +30,12 @@ const ROOM = document.createElement('canvas'); ROOM.width = W; ROOM.height = H; 
 function room(variant = 'full') { if (roomKey !== variant) { const m = x; x = ROOM.getContext('2d'); x.lineJoin = x.lineCap = 'round'; x.clearRect(0, 0, W, H); courtroom(1040, 1330, { seal: variant === 'full' }); x = m; roomKey = variant; } x.drawImage(ROOM, 0, 0); }
 
 // ---------- scenes ----------
+const talking = (who, t) => talk(who, t);
+// the judge standing behind the bench (only the upper body shows above it)
+function judgeAtBench(t, cx, benchTop, h, extra = {}) { x.save(); x.beginPath(); x.rect(-500, -500, W + 1000, benchTop + 250 + 500); x.clip(); person(cx, benchTop + h * 0.42, h, LOOK.judge, { talk: talking('judge', t), brows: 0.3, smile: -0.1, armL: [0.25, -0.9], armR: [0.25, -0.9], ...extra }); x.restore(); }
 function sTitle(t) {
   room('full');
   x.save(); camera(t, [[0, 1.12, 540, 760], [0, 1.0, 540, 900, 3]]);
-  // gavel striking its block
   const h1 = C.rise - 0.25, h2 = C.title;
   const up = t < h1 ? ss(0.2, h1 - 0.1, t) : t < h2 ? ss(h1 + 0.15, h2 - 0.35, t) * (1 - ss(h2 - 0.12, h2, t)) : 0;
   paint(RR(330, 1210, 420, 70, 18), PAL.woodDark, { sh: [0, 12], hl: [450, 1220, 120] });
@@ -48,102 +51,111 @@ function sTitle(t) {
   stamp('SMALL CRIMES', 540, 840, 168, ss(h2, h2 + 0.18, t), -0.05);
   txt('every case backed by real research', 540, 960, '50px Caveat', PAL.oxblood, ss(h2 + 0.4, h2 + 1, t));
 }
-const DOCK = [...Array(12)].map((_, i) => [130 + (i % 6) * 164 + (i >= 6 ? 82 : 0), i < 6 ? 1100 : 1290]);
+function lineupWall() { // police line-up: height marks on the wall
+  paint(P(-40, 160, W + 40, 160, W + 40, 1180, -40, 1180), '#d9d2c2', { shade: false, lw: 0 });
+  for (let i = 0; i <= 10; i++) { const y = 1080 - i * 82; stroke([0, y, W, y], i % 2 ? 2 : 4, 'rgba(43,29,23,.55)'); if (i % 2 === 0) { txt(`${150 + i * 5}`, 46, y - 22, '34px "Special Elite"', 'rgba(43,29,23,.7)', 1, 'left'); txt(`${150 + i * 5}`, W - 46, y - 22, '34px "Special Elite"', 'rgba(43,29,23,.7)', 1, 'right'); } }
+  paint(P(-40, 1180, W + 40, 1180, W + 40, H + 40, -40, H + 40), '#5e4a3a', { shade: false, lw: 0 });
+}
+const ROWS = [...Array(12)].map((_, i) => i < 6 ? [540 + (i - 2.5) * 166, 1180, 560] : [540 + (i - 8.5) * 166, 1440, 600]);
 function sDock(t) {
-  room('noseal'); seal(540, 250, 110);
-  x.save(); camera(t, [[S.dock.start, 1.15, 540, 620], [C.defendants - 0.3, 1.0, 540, 960, 1.0]]);
-  judgeAgatha(540, 590, 0.78, talk('judge', t), { look: [0, 0.4] });
-  bench(540, 700, 820, 250);
-  DOCK.forEach(([px, py], i) => { if (i < 6) defendant(px, py, 0.6, i + 1, ss(C.defendants + i * 0.06, C.defendants + i * 0.06 + 0.3, t)); });
-  rail(60, 1020, 1170, 110, 12);
-  DOCK.forEach(([px, py], i) => { if (i >= 6) defendant(px, py, 0.66, i + 1, ss(C.defendants + i * 0.06, C.defendants + i * 0.06 + 0.3, t)); });
-  x.restore();
+  const lineup = t >= C.defendants - 0.25;
+  if (!lineup) {
+    room('noseal'); seal(540, 250, 110);
+    x.save(); camera(t, [[S.dock.start, 1.12, 540, 700], [S.dock.start, 1.04, 540, 820, 2]]);
+    judgeAtBench(t, 540, 760, 1000); bench(540, 760, 820, 300);
+    x.restore();
+  } else {
+    lineupWall();
+    x.save(); camera(t, [[C.defendants - 0.25, 1.08, 540, 900], [C.defendants - 0.25, 1.0, 540, 960, 2.5]]);
+    ROWS.forEach(([px, py, h], i) => { const k = ss(C.defendants + i * 0.05, C.defendants + i * 0.05 + 0.3, t); if (k <= 0) return; x.save(); x.globalAlpha = k; person(px, py + (1 - easeOut(k)) * 30, h, defendantLook(i), { phone: true, armL: [0.15, -1.85], armR: [0.15, -1.85], look: [0, 0.6], tilt: (R(i) - 0.5) * 0.08 }); x.restore(); });
+    x.restore();
+  }
   const k = ss(LN[1].start - 0.1, LN[1].start + 0.4, t);
-  if (k > 0) { x.save(); x.globalAlpha = k; x.translate(540, 120); x.rotate(-0.015); paint(RR(-420, -56, 840, 112, 14), PAL.cream, { sh: [0, 10], lw: 5 }); x.restore(); const s2 = 'CASE Nº 001 — THE GROUP CHAT'; txt(s2.slice(0, Math.ceil(s2.length * ss(LN[1].start, LN[1].start + 1, t))), 540, 122, '48px "Special Elite"', PAL.ink, k, 'center', 2, -0.015); }
+  if (k > 0) { x.save(); x.globalAlpha = k; x.translate(540, 110); x.rotate(-0.015); paint(RR(-420, -56, 840, 112, 14), PAL.cream, { sh: [0, 10], lw: 5 }); x.restore(); const s2 = 'CASE Nº 001 — THE GROUP CHAT'; txt(s2.slice(0, Math.ceil(s2.length * ss(LN[1].start, LN[1].start + 1, t))), 540, 112, '48px "Special Elite"', PAL.ink, k, 'center', 2, -0.015); }
 }
 function sEvidence(t) {
   room('full'); dim(0.25);
-  x.save(); camera(t, [[S.evidence.start, 1.0, 540, 960], [C.seenStart - 0.2, 1.06, 600, 900, 1.2]]);
-  const sc = phone(690, 760, 640, 1060);
+  x.save(); camera(t, [[S.evidence.start, 1.0, 540, 960], [C.seenStart - 0.2, 1.04, 600, 920, 1.2]]);
+  const sc = phone(720, 740, 600, 1000);
   paint(RR(sc.x0, sc.y0, sc.x1 - sc.x0, 150, 40), '#e9e3d6', { shade: false, lw: 0 });
-  avatar(sc.x0 + 70, sc.y0 + 92, 34, 3); txt('Saturday Crew', sc.x0 + 122, sc.y0 + 76, '500 40px Inter', PAL.ink, 1, 'left'); txt('12 members', sc.x0 + 122, sc.y0 + 116, '500 28px Inter', '#7a6a5a', 1, 'left');
+  avatar(sc.x0 + 66, sc.y0 + 92, 32, 3); txt('Saturday Crew', sc.x0 + 112, sc.y0 + 76, '500 38px Inter', PAL.ink, 1, 'left'); txt('12 members', sc.x0 + 112, sc.y0 + 114, '500 28px Inter', '#7a6a5a', 1, 'left');
   stroke([sc.x0, sc.y0 + 150, sc.x1, sc.y0 + 150], 3, '#cfc6b4');
   txt('Sunday 9:14 PM', (sc.x0 + sc.x1) / 2, sc.y0 + 200, '500 28px Inter', '#8a7a6a', ss(C.sunday, C.sunday + 0.3, t));
   const mk = ss(C.message - 0.1, C.message + 0.3, t);
-  if (mk > 0) { avatar(sc.x0 + 46, sc.y0 + 380, 26, 1); txt('Sam', sc.x0 + 86, sc.y0 + 252, '500 28px Inter', PAL.oxblood, mk, 'left'); bubble(sc.x0 + 82, sc.y0 + 270, 470, ['can anyone help me', 'move on saturday? 🙏'.replace(' 🙏', '??')], false, mk, mk); }
+  if (mk > 0) { avatar(sc.x0 + 44, sc.y0 + 380, 24, 1); txt('Sam', sc.x0 + 82, sc.y0 + 252, '500 28px Inter', PAL.oxblood, mk, 'left'); bubble(sc.x0 + 78, sc.y0 + 270, 440, ['can anyone help me', 'move on saturday??'], false, mk, mk, '500 38px Inter', 48); }
   const n = Math.round(12 * ss(C.seenStart + 0.1, C.seen12 + 0.3, t));
-  if (t > C.seenStart) { txt('Seen by ' + n, sc.x1 - 30, sc.y0 + 470, '500 32px Inter', n === 12 ? PAL.red : '#8a7a6a', 1, 'right'); for (let i = 0; i < n; i++) avatar(sc.x1 - 40 - i * 40, sc.y0 + 520, 17, i + 2); }
+  if (t > C.seenStart) { txt('Seen by ' + n, sc.x1 - 28, sc.y0 + 460, '500 32px Inter', n === 12 ? PAL.red : '#8a7a6a', 1, 'right'); for (let i = 0; i < n; i++) avatar(sc.x1 - 38 - i * 38, sc.y0 + 510, 16, i + 2); }
   if (t > C.zero) {
-    const k = ss(C.zero, C.zero + 0.35, t), gy = sc.y0 + 700;
+    const k = ss(C.zero, C.zero + 0.35, t), gy = sc.y0 + 680;
     txt('0 replies', (sc.x0 + sc.x1) / 2, gy, '96px "Bebas Neue"', PAL.red, k, 'center', 4);
-    for (let i = 0; i < 3; i++) { const cx = sc.x0 + 150 + i * 150, cy = gy + 150 + Math.sin(T * 8 + i * 2) * 6; x.save(); x.globalAlpha = k; paint(E(cx, cy, 34, 16, -0.15), '#5c7a3a', { sh: [4, 4], lw: 4 }); paint(E(cx + 30, cy - 8, 14, 12), '#4a6430', { shade: false, lw: 4 }); stroke([cx + 38, cy - 18, cx + 70, cy - 52 - Math.abs(Math.sin(T * 18 + i)) * 10], 3); stroke([cx - 8, cy + 12, cx - 22, cy + 38], 3); stroke([cx + 8, cy + 12, cx + 10, cy + 40], 3); x.restore(); }
-    txt('*cricket noises*', (sc.x0 + sc.x1) / 2, gy + 260, '44px Caveat', '#7a6a5a', k);
+    for (let i = 0; i < 3; i++) { const cx = sc.x0 + 140 + i * 140, cy = gy + 140 + Math.sin(T * 8 + i * 2) * 6; x.save(); x.globalAlpha = k; paint(E(cx, cy, 32, 15, -0.15), '#5c7a3a', { sh: [4, 4], lw: 4 }); paint(E(cx + 28, cy - 8, 13, 11), '#4a6430', { shade: false, lw: 4 }); stroke([cx + 36, cy - 18, cx + 66, cy - 50 - Math.abs(Math.sin(T * 18 + i)) * 10], 3); stroke([cx - 8, cy + 12, cx - 22, cy + 36], 3); stroke([cx + 8, cy + 12, cx + 10, cy + 38], 3); x.restore(); }
+    txt('*cricket noises*', (sc.x0 + sc.x1) / 2, gy + 250, '44px Caveat', '#7a6a5a', k);
   }
   x.restore();
-  foxFelix(220, 1080, 0.66, talk('prosecutor', t), { point: 0.4 + 0.25 * Math.sin(T * 2.5), look: [0.6, 0.1], smug: t > C.zero });
-  stamp('EXHIBIT A', 820, 190, 100, ss(C.seenStart - 0.35, C.seenStart - 0.12, t), 0.08);
+  person(210, 1440, 980, LOOK.prosecutor, { talk: talking('prosecutor', t), armR: [1.42 + 0.06 * Math.sin(T * 3), 0.05], armL: [0.12, 0.1], brows: t > C.zero ? -0.5 : 0.4, smile: t > C.zero ? 0.9 : 0.3, look: [0.6, 0] });
+  stamp('EXHIBIT A', 840, 170, 96, ss(C.seenStart - 0.35, C.seenStart - 0.12, t), 0.08);
 }
 function sExpert(t) {
   const call = LN[EP.ID.call];
-  if (t < call.end + 0.35) { room('noseal'); seal(540, 250, 110); x.save(); camera(t, [[S.expert.start, 1.25, 540, 640]]); judgeAgatha(540, 650, 0.86, talk('judge', t), { look: [0.4, 0.2] }); bench(540, 790, 860, 330); x.restore(); return; }
+  if (t < call.end + 0.35) { room('noseal'); seal(540, 250, 110); x.save(); camera(t, [[S.expert.start, 1.18, 540, 700]]); judgeAtBench(t, 540, 760, 1000, { look: [0.5, 0] }); bench(540, 760, 820, 300); x.restore(); return; }
   room('noseal');
-  // chalkboard on the wall
-  paint(RR(60, 220, 600, 860, 20), PAL.woodDark, { sh: [0, 14], lw: 6 }); paint(RR(86, 246, 548, 808, 10), PAL.chalk, { shade: false, lw: 4 });
-  txt('THE 1968 STUDY', 360, 330, '62px "Bebas Neue"', '#f3eee2', 1, 'center', 4); txt('Darley & Latané', 360, 392, '46px Caveat', '#d9d4c8', 0.9);
+  paint(RR(50, 220, 600, 860, 20), PAL.woodDark, { sh: [0, 14], lw: 6 }); paint(RR(76, 246, 548, 808, 10), PAL.chalk, { shade: false, lw: 4 });
+  txt('THE 1968 STUDY', 350, 330, '62px "Bebas Neue"', '#f3eee2', 1, 'center', 4); txt('Darley & Latané', 350, 392, '46px Caveat', '#d9d4c8', 0.9);
   const base = 950, hMax = 420, b1 = ss(C.eighty - 0.1, C.eighty + 0.8, t) * 0.85, b2 = ss(C.thirty - 0.1, C.thirty + 0.8, t) * 0.31;
-  stroke([120, base, 600, base], 5, '#f3eee2');
-  if (b1 > 0) { paint(RR(150, base - hMax * b1, 160, hMax * b1, 8), PAL.mustard, { sh: [10, 0], lw: 4, line: '#f3eee2' }); txt(Math.round(b1 * 100) + '%', 230, base - hMax * b1 - 46, '72px "Bebas Neue"', '#f3eee2'); }
-  if (b2 > 0) { paint(RR(410, base - hMax * b2, 160, hMax * b2, 8), '#e06a5a', { sh: [10, 0], lw: 4, line: '#f3eee2' }); txt(Math.round(b2 * 100) + '%', 490, base - hMax * b2 - 46, '72px "Bebas Neue"', '#f3eee2'); }
-  txt('alone', 230, base + 50, '48px Caveat', '#f3eee2', ss(C.alone - 0.2, C.alone + 0.3, t)); txt('4 others nearby', 490, base + 50, '42px Caveat', '#f3eee2', ss(C.four - 0.2, C.four + 0.3, t));
-  txt('people who helped', 360, 460, '40px Caveat', '#d9d4c8', ss(C.eighty, C.eighty + 0.5, t));
-  heronIngrid(830, 900, 0.62, talk('expert', t), { pointer: 0.15 * Math.sin(T * 1.5) });
-  paint(RR(640, 1120, 400, 260, 14), PAL.wood, { sh: [14, 0], lw: 6 }); paint(RR(670, 1150, 340, 200, 10), PAL.woodLight, { sh: [-8, -8], shadeCol: shadeOf(PAL.wood, 0.85), lw: 3 });
-  paint(RR(620, 1096, 440, 44, 10), PAL.woodDark, { sh: [0, 10], lw: 5 }); paint(RR(730, 1220, 220, 56, 8), PAL.gold, { sh: [0, 6], lw: 3 }); txt('WITNESS', 840, 1250, '40px "Bebas Neue"', '#5a3d14', 1, 'center', 5);
+  stroke([110, base, 590, base], 5, '#f3eee2');
+  if (b1 > 0) { paint(RR(140, base - hMax * b1, 160, hMax * b1, 8), PAL.mustard, { sh: [10, 0], lw: 4, line: '#f3eee2' }); txt(Math.round(b1 * 100) + '%', 220, base - hMax * b1 - 46, '72px "Bebas Neue"', '#f3eee2'); }
+  if (b2 > 0) { paint(RR(400, base - hMax * b2, 160, hMax * b2, 8), '#e06a5a', { sh: [10, 0], lw: 4, line: '#f3eee2' }); txt(Math.round(b2 * 100) + '%', 480, base - hMax * b2 - 46, '72px "Bebas Neue"', '#f3eee2'); }
+  txt('alone', 220, base + 50, '48px Caveat', '#f3eee2', ss(C.alone - 0.2, C.alone + 0.3, t)); txt('4 others nearby', 480, base + 50, '42px Caveat', '#f3eee2', ss(C.four - 0.2, C.four + 0.3, t));
+  txt('people who helped', 350, 460, '40px Caveat', '#d9d4c8', ss(C.eighty, C.eighty + 0.5, t));
+  person(850, 1440, 940, LOOK.expert, { talk: talking('expert', t), armL: [1.05 + 0.08 * Math.sin(T * 1.6), -0.35], armR: [0.14, 0.12], pointer: 'L', look: [-0.6, 0], brows: 0.1, smile: 0.4 });
 }
 function sDiffuse(t) {
-  room('noseal'); dim(0.35);
-  const cx = 540, cy = 720, r = 200, split = ss(C.someone - 0.1, C.someone + 1.3, t);
-  paint(RR(140, 120, 800, 120, 20), PAL.cream, { sh: [0, 10], lw: 5 }); txt('RESPONSIBILITY', 540, 182, '84px "Bebas Neue"', PAL.ink, 1, 'center', 8);
-  DOCK.forEach((_, i) => { const a = i / 12 * TAU - PI / 2, px = cx + Math.cos(a) * 400, py = cy + Math.sin(a) * 400; defendant(px, py - 30, 0.44, i + 1, 1); });
+  lineupWall(); dim(0.15);
+  const cx = 540, cy = 760, r = 190, split = ss(C.someone - 0.1, C.someone + 1.3, t);
+  paint(RR(140, 110, 800, 120, 20), PAL.cream, { sh: [0, 10], lw: 5 }); txt('RESPONSIBILITY', 540, 172, '84px "Bebas Neue"', PAL.ink, 1, 'center', 8);
+  const order = [...Array(12).keys()].sort((a, b) => Math.sin(a / 12 * TAU - PI / 2) - Math.sin(b / 12 * TAU - PI / 2));
+  for (const i of order) { const a = i / 12 * TAU - PI / 2, px = cx + Math.cos(a) * 410, py = cy + Math.sin(a) * 330 + 150; person(px, py, 300, defendantLook(i), { phone: true, armL: [0.15, -1.85], armR: [0.15, -1.85] }); }
   for (let i = 0; i < 12; i++) {
-    const a0 = i / 12 * TAU - PI / 2, a1 = (i + 1) / 12 * TAU - PI / 2, am = (a0 + a1) / 2, off = split * 120, px = cx + Math.cos(am) * off, py = cy + Math.sin(am) * off, rr = r * (1 - 0.3 * split);
+    const a0 = i / 12 * TAU - PI / 2, a1 = (i + 1) / 12 * TAU - PI / 2, am = (a0 + a1) / 2, off = split * 110, px = cx + Math.cos(am) * off, py = cy + Math.sin(am) * off, rr = r * (1 - 0.3 * split);
     paint(() => { x.beginPath(); x.moveTo(px, py); x.arc(px, py, rr, a0, a1); x.closePath(); }, i % 2 ? PAL.mustard : '#ecc066', { sh: [6, 6], lw: 4 });
   }
-  if (split < 0.5) txt('100%', cx, cy, '96px "Bebas Neue"', PAL.ink, 1 - split * 2); else txt('8% each', cx, cy, '74px "Bebas Neue"', '#fff8ea', (split - 0.5) * 2);
+  if (split < 0.5) txt('100%', cx, cy, '96px "Bebas Neue"', PAL.ink, 1 - split * 2); else txt('8% each', cx, cy, '70px "Bebas Neue"', '#fff8ea', (split - 0.5) * 2);
   const dk = ss(C.diffusion - 0.1, C.diffusion + 0.5, t);
-  if (dk > 0) { x.save(); x.globalAlpha = dk; paint(RR(70, 1220, 940, 130, 18), PAL.cream, { sh: [0, 10], lw: 5 }); x.restore(); const s2 = 'DIFFUSION OF RESPONSIBILITY'; txt(s2.slice(0, Math.ceil(s2.length * ss(C.diffusion, C.diffusion + 1.1, t))), 540, 1286, '50px "Special Elite"', PAL.oxblood, dk, 'center', 2); }
+  if (dk > 0) { x.save(); x.globalAlpha = dk; paint(RR(70, 1300, 940, 130, 18), PAL.cream, { sh: [0, 10], lw: 5 }); x.restore(); const s2 = 'DIFFUSION OF RESPONSIBILITY'; txt(s2.slice(0, Math.ceil(s2.length * ss(C.diffusion, C.diffusion + 1.1, t))), 540, 1366, '50px "Special Elite"', PAL.oxblood, dk, 'center', 2); }
 }
 function sVerdict(t) {
-  room('noseal'); seal(540, 230, 100);
-  const g = C.guilty, gav = t < g - 0.05 ? -1.0 * ss(S.verdict.start + 0.2, g - 0.4, t) : 0.12 * Math.exp(-(t - g) * 10);
-  x.save(); camera(t, [[S.verdict.start, 1.0, 540, 900], [S.verdict.start, 1.15, 540, 760, g - S.verdict.start], [g, 1.03, 540, 880, 0.15]]);
-  judgeAgatha(540, 760, 1.05, talk('judge', t), { gavel: gav, squint: ss(S.verdict.start, g, t), look: [0, 0.2] });
-  bench(540, 930, 940, 330);
+  room('noseal');
+  const g = C.guilty, raise = t < g - 0.05 ? ss(S.verdict.start + 0.2, g - 0.4, t) : 0, hit = t >= g - 0.05 ? Math.exp(-(t - g) * 8) : 0;
+  x.save(); camera(t, [[S.verdict.start, 1.0, 540, 860], [S.verdict.start, 1.14, 540, 720, g - S.verdict.start], [g, 1.03, 540, 840, 0.15]]);
+  judgeAtBench(t, 540, 840, 1080, { armR: [0.6 + raise * 2.0 - hit * 0.2, -0.5 - raise * 0.6], gavel: -0.3 - raise * 0.5, brows: 0.6, smile: -0.4 });
+  bench(540, 840, 880, 300);
   x.restore();
-  const slump = ss(g + 0.15, g + 0.7, t); for (let i = 0; i < 6; i++) defendant(130 + i * 164, 1330, 0.52, i + 1, 1, slump);
-  rail(60, 1020, 1380, 90, 12);
-  stamp('GUILTY', 540, 520, 220, ss(g + 0.03, g + 0.2, t), -0.1);
+  const slump = ss(g + 0.15, g + 0.7, t);
+  for (let i = 0; i < 6; i++) person(120 + i * 168, 1450, 360, defendantLook(i + 6), { slump, tilt: slump * (i % 2 ? 0.12 : -0.12), armL: [0.1, 0.05], armR: [0.1, 0.05], smile: -0.8 * slump, brows: -0.6 * slump });
+  stamp('GUILTY', 540, 250, 200, ss(g + 0.03, g + 0.2, t), -0.08);
 }
 function sSentence(t) {
   room('noseal'); dim(0.3);
-  txt('SENTENCE', 80, 150, '96px "Bebas Neue"', PAL.cream, 1, 'left', 8);
-  txt('ask ONE person, by name', 84, 238, '54px Caveat', '#ffe7b0', ss(C.ask - 0.2, C.ask + 0.4, t), 'left');
-  x.save(); x.beginPath(); x.arc(890, 190, 130, 0, TAU); x.clip(); x.fillStyle = PAL.wall; x.fillRect(700, 0, 400, 400); judgeAgatha(890, 262, 0.55, talk('judge', t), { look: [-0.5, 0.2] }); x.restore();
-  x.save(); x.lineWidth = 8; x.strokeStyle = PAL.gold; x.beginPath(); x.arc(890, 190, 130, 0, TAU); x.stroke(); x.restore();
-  const sc = phone(540, 860, 760, 980);
-  paint(RR(sc.x0, sc.y0, sc.x1 - sc.x0, 150, 40), '#e9e3d6', { shade: false, lw: 0 }); avatar(sc.x0 + 70, sc.y0 + 92, 34, 5); txt('Jordan', sc.x0 + 122, sc.y0 + 92, '500 42px Inter', PAL.ink, 1, 'left');
-  stroke([sc.x0, sc.y0 + 150, sc.x1, sc.y0 + 150], 3, '#cfc6b4');
-  const mk = ss(C.one - 0.1, C.one + 0.3, t); bubble(sc.x1 - 30 - 560, sc.y0 + 210, 560, ['Jordan, can you help', 'me move on Saturday?'], true, mk, mk);
-  const rk = ss(C.sentenceEnd - 0.25, C.sentenceEnd + 0.1, t); bubble(sc.x0 + 30, sc.y0 + 420, 420, ['Yes! What time?'], false, rk, rk);
-  if (rk > 0.5) { txt('replied in 40 seconds', (sc.x0 + sc.x1) / 2, sc.y0 + 600, '46px Caveat', PAL.oxblood, rk); }
+  txt('SENTENCE', 70, 150, '96px "Bebas Neue"', PAL.cream, 1, 'left', 8);
+  txt('ask ONE person, by name', 74, 238, '54px Caveat', '#ffe7b0', ss(C.ask - 0.2, C.ask + 0.4, t), 'left');
+  x.save(); x.beginPath(); x.arc(900, 190, 125, 0, TAU); x.clip(); x.fillStyle = PAL.wall; x.fillRect(700, 0, 400, 400); person(900, 1010, 900, LOOK.judge, { talk: talking('judge', t), look: [-0.6, 0], brows: 0.2 }); x.restore();
+  x.save(); x.lineWidth = 8; x.strokeStyle = PAL.gold; x.beginPath(); x.arc(900, 190, 125, 0, TAU); x.stroke(); x.restore();
+  const sc = phone(390, 860, 640, 900);
+  paint(RR(sc.x0, sc.y0, sc.x1 - sc.x0, 140, 40), '#e9e3d6', { shade: false, lw: 0 }); avatar(sc.x0 + 64, sc.y0 + 86, 32, 5); txt('Jordan', sc.x0 + 110, sc.y0 + 86, '500 40px Inter', PAL.ink, 1, 'left');
+  stroke([sc.x0, sc.y0 + 140, sc.x1, sc.y0 + 140], 3, '#cfc6b4');
+  const mk = ss(C.one - 0.1, C.one + 0.3, t); bubble(sc.x1 - 24 - 480, sc.y0 + 190, 480, ['Jordan, can you help', 'me move on Saturday?'], true, mk, mk, '500 36px Inter', 46);
+  const rk = ss(C.sentenceEnd - 0.25, C.sentenceEnd + 0.1, t); bubble(sc.x0 + 24, sc.y0 + 380, 380, ['Yes! What time?'], false, rk, rk, '500 36px Inter', 46);
+  if (rk > 0.5) txt('replied in 40 seconds', (sc.x0 + sc.x1) / 2, sc.y0 + 560, '44px Caveat', PAL.oxblood, rk);
+  const yay = ss(C.sentenceEnd - 0.1, C.sentenceEnd + 0.4, t);
+  person(870, 1450, 860, LOOK.sam, yay > 0 ? { armR: [lerp(0.15, 2.7, yay), lerp(-1.85, 0.2, yay)], armL: [0.15, -1.85], phone: false, smile: 1, brows: 0.3 } : { phone: true, armL: [0.15, -1.85], armR: [0.15, -1.85], smile: -0.2, look: [-0.4, 0.6] });
 }
 function sOutro(t) {
   room('full'); dim(0.15);
-  paint(RR(90, 600, 900, 820, 30), PAL.cream, { sh: [0, 16], lw: 6 });
-  txt('YOUR VERDICT?', 540, 760, '150px "Bebas Neue"', PAL.ink, ss(C.yourVerdict - 0.2, C.yourVerdict + 0.3, t), 'center', 8);
-  stamp('GUILTY', 300, 980, 150, ss(C.guiltyQ, C.guiltyQ + 0.18, t), -0.12, PAL.red);
-  stamp('NOT GUILTY', 760, 1150, 120, ss(C.notQ + 0.2, C.notQ + 0.38, t), 0.08, PAL.navy);
-  txt('tell the court in the comments', 540, 1320, '60px Caveat', PAL.oxblood, ss(C.notQ + 0.6, C.notQ + 1.1, t));
+  paint(RR(90, 560, 900, 860, 30), PAL.cream, { sh: [0, 16], lw: 6 });
+  txt('YOUR VERDICT?', 540, 720, '150px "Bebas Neue"', PAL.ink, ss(C.yourVerdict - 0.2, C.yourVerdict + 0.3, t), 'center', 8);
+  stamp('GUILTY', 300, 950, 150, ss(C.guiltyQ, C.guiltyQ + 0.18, t), -0.12, PAL.red);
+  stamp('NOT GUILTY', 760, 1120, 120, ss(C.notQ + 0.2, C.notQ + 0.38, t), 0.08, PAL.navy);
+  txt('tell the court in the comments', 540, 1310, '60px Caveat', PAL.oxblood, ss(C.notQ + 0.6, C.notQ + 1.1, t));
 }
 const SCN = { title: sTitle, dock: sDock, evidence: sEvidence, expert: sExpert, diffuse: sDiffuse, verdict: sVerdict, sentence: sSentence, outro: sOutro };
 
