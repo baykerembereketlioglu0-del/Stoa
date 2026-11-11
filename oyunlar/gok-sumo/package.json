@@ -1,8 +1,0 @@
-{
-  "name": "gok-sumo",
-  "private": true,
-  "version": "1.0.0",
-  "description": "Gök Sumo: iki kişilik 3D mobil arena oyunu (three.js, her şey kodla üretilir)",
-  "scripts": { "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=dist/game.js && cp src/index.html dist/index.html" },
-  "devDependencies": { "esbuild": "^0.21.5", "three": "0.160.0" }
-}
