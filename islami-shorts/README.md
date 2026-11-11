@@ -25,6 +25,7 @@ node tools/record.js ep01-kuran-5-bilgi     # videolar/ep01-kuran-5-bilgi.mp4
 | # | Konu | Durum |
 |---|------|-------|
 | 01 | Kur'an hakkında çoğu kişinin bilmediği 5 bilgi | hazır |
+| 02 | Denize bırakılan emanet (Buhârî, Kefâlet 1 + Talâk 65/3) | çizimler hazır, kullanıcının ses kaydı bekleniyor |
 
 ## Sıradaki konu fikirleri (tutma potansiyeli yüksek)
 - Peygamberimizin (s.a.v.) günlük hayatından 5 sünnet (kaynaklı hadislerle)
@@ -34,3 +35,11 @@ node tools/record.js ep01-kuran-5-bilgi     # videolar/ep01-kuran-5-bilgi.mp4
 - Ayetel Kürsî neden bu kadar özel?
 - Namazın 5 vakti nereden geliyor?
 - Çocuklar için: Esmaü'l-Hüsna'dan 5 isim ve anlamı
+
+## Kullanıcının kendi ses kaydıyla
+Kaydı `<bölüm>/voice/full.mp3` (veya .m4a/.wav) olarak koy; satırlar arasında ~1 sn sessizlik olsun.
+```
+node tools/import_voice.js ep02-tahta-emanet   # kaydı satırlara böler, timeline.js + narration.wav üretir
+node tools/score.js ep02-tahta-emanet
+node tools/record.js ep02-tahta-emanet
+```

@@ -8,7 +8,7 @@ const KEY = process.env.ELEVENLABS_API_KEY || 'proxy-injected', MODEL = process.
 const vdir = path.join(dir, 'voice'); fs.mkdirSync(vdir, { recursive: true });
 const probe = f => parseFloat(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]).toString());
 async function tts(i) {
-  const l = EP.LINES[i], c = CAST[l.who], base = path.join(vdir, String(i + 1).padStart(2, '0'));
+  const l = EP.LINES[i], c = { ...CAST[l.who], voice: process.env.VOICE_OVERRIDE || CAST[l.who].voice }, base = path.join(vdir, String(i + 1).padStart(2, '0'));
   const same = EP.LINES.map((x, k) => ({ x, k })).filter(o => o.x.who === l.who);
   const prev = same.filter(o => o.k < i).slice(-2).map(o => o.x.text).join(' '), next = (same.find(o => o.k > i) || {}).x?.text;
   const body = { text: l.text, model_id: MODEL, voice_settings: { use_speaker_boost: true, ...c.settings }, previous_text: prev || undefined, next_text: next || undefined };
