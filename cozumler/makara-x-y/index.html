@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Makara Sorusu · Çözüm</title>
+<link rel="stylesheet" href="../../assets/fonts/fonts.css">
+<style>
+html,body{margin:0;height:100%;background:#1b1d22;color:#eee;font-family:system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+canvas{height:min(86vh,1920px);aspect-ratio:9/16;box-shadow:0 20px 60px #000}
+#ui{display:flex;gap:10px;align-items:center;width:min(92vw,480px);font-size:13px}
+button{background:#2f6fd6;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:800;cursor:pointer}input{flex:1}
+body.cap{background:#000}body.cap #ui{display:none}body.cap canvas{height:100vh;box-shadow:none}
+</style></head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="ui"><button id="pp">Oynat</button><input id="sl" type="range" min="0" max="90" step="0.033" value="0"><span id="tm">0.0</span></div>
+<audio id="a1" src="narration.wav" preload="auto"></audio>
+<script src="script.js"></script>
+<script src="timeline.js"></script>
+<script>
+const cv = document.getElementById('c'), x = cv.getContext('2d'), W = 1080, H = 1920, PI = Math.PI, TAU = PI * 2;
+const capMode = location.search.includes('capture=1'); if (capMode) document.body.classList.add('cap');
+const TL = window.TIMELINE || EP.estimateTimeline(), LN = TL.lines, DUR = TL.duration; window.DURATION = DUR;
+const cl = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
+const ss = (a, b, v) => { const t = cl((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const eo = k => 1 - Math.pow(1 - cl(k, 0, 1), 3), eb = k => { const c = 1.7; k = cl(k, 0, 1); return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const S = id => LN[EP.ID[id]].start, E = id => LN[EP.ID[id]].end;
+const low = s => s.toLocaleLowerCase('tr').replace(/[^\p{L}\d]/gu, '');
+const WT = (id, p, n = 0) => { let c = 0; for (const w of LN[EP.ID[id]].words) if (low(w[0]).startsWith(p) && c++ === n) return w[1]; return S(id); };
+const COL = { ink: '#22314a', red: '#d6453d', blue: '#2f6fd6', green: '#2e9b5a', orange: '#e0802a', board: '#fbfaf6', grid: '#e6e9ef', soft: '#8c97a8' };
+x.lineJoin = 'round'; x.lineCap = 'round';
+
+// ---------- helpers ----------
+function txt(s, px, py, font, col, a = 1, align = 'center') { if (a <= 0) return; x.save(); x.globalAlpha = a; x.font = font; x.fillStyle = col; x.textAlign = align; x.textBaseline = 'middle'; x.fillText(s, px, py); x.restore(); }
+// text with subscripts: "a_Y" -> a with a small, lowered Y
+function rich(s, px, py, size, col, a = 1, align = 'left') {
+  if (a <= 0) return; const parts = []; s.split(/(_[A-Za-zçğıöşüÇĞİÖŞÜ0-9]+)/).forEach(p => { if (p) parts.push(p[0] === '_' ? [p.slice(1), true] : [p, false]); });
+  x.save(); x.globalAlpha = a; x.fillStyle = col; x.textBaseline = 'middle';
+  const f = sub => `700 ${sub ? size * 0.62 : size}px Caveat`; let w = 0; for (const [p, sb] of parts) { x.font = f(sb); w += x.measureText(p).width; }
+  let cx = align === 'center' ? px - w / 2 : px; for (const [p, sb] of parts) { x.font = f(sb); x.fillText(p, cx, py + (sb ? size * 0.22 : 0)); cx += x.measureText(p).width; }
+  x.restore(); return w;
+}
+function drawLine(x0, y0, x1, y1, k, col, w = 7) { if (k <= 0) return; x.beginPath(); x.moveTo(x0, y0); x.lineTo(lerp(x0, x1, k), lerp(y0, y1, k)); x.strokeStyle = col; x.lineWidth = w; x.stroke(); }
+function arrow(x0, y0, x1, y1, k, col, label, lx, ly, la = 1, w = 9) { // grows from (x0,y0) to (x1,y1)
+  if (k <= 0) return; const ex = lerp(x0, x1, eo(k)), ey = lerp(y0, y1, eo(k)), a = Math.atan2(ey - y0, ex - x0);
+  x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineWidth = w; x.beginPath(); x.moveTo(x0, y0); x.lineTo(ex - Math.cos(a) * 18, ey - Math.sin(a) * 18); x.stroke();
+  x.beginPath(); x.moveTo(ex, ey); x.lineTo(ex - Math.cos(a - 0.45) * 34, ey - Math.sin(a - 0.45) * 34); x.lineTo(ex - Math.cos(a + 0.45) * 34, ey - Math.sin(a + 0.45) * 34); x.closePath(); x.fill(); x.restore();
+  if (label) txt(label, lx, ly, '700 54px Caveat', col, la * ss(0.4, 1, k));
+}
+function box(px, py, w, h, col, k, fill = '#fff') { if (k <= 0) return; x.save(); x.globalAlpha = Math.min(1, k * 2); const s = 0.85 + 0.15 * eb(k); x.translate(px, py); x.scale(s, s); x.beginPath(); x.roundRect(-w / 2, -h / 2, w, h, 16); x.fillStyle = fill; x.fill(); x.lineWidth = 6; x.strokeStyle = col; x.stroke(); x.restore(); }
+function highlight(px, py, r, col, a) { if (a <= 0) return; x.save(); x.globalAlpha = a * 0.16; x.fillStyle = col; x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill(); x.restore(); }
+
+// ---------- motion (illustrative, true ratios: pulley rises half as much as Y) ----------
+const M0 = WT('ysonuc', 'kütlesi') , MLEN = 3.4;
+function motion(t) { if (t < M0) return 0; const tau = (t - M0) % MLEN, fade = ss(MLEN - 0.35, MLEN, tau); return 230 * Math.pow(tau / (MLEN - 0.35), 2) * (1 - fade); }
+
+// ---------- the diagram ----------
+const GY = 1110, PX = 540, PY0 = 560, PR = 110;
+function diagram(t) {
+  const d = motion(t), py = PY0 - d / 2, yUp = d; // Y rises d, the pulley d/2, X stays
+  const kG = ss(S('kurulum'), S('kurulum') + 1.2, t), kP = ss(S('kurulum') + 0.6, S('kurulum') + 1.6, t), kF = ss(WT('kurulum', 'yukarı') - 0.2, WT('kurulum', 'yukarı') + 0.5, t), kR = ss(S('kurulum') + 1.2, S('kurulum') + 2.2, t);
+  const kX = ss(WT('cisimler', 'dört') - 0.2, WT('cisimler', 'dört') + 0.4, t), kY = ss(WT('cisimler', 'iki') - 0.2, WT('cisimler', 'iki') + 0.4, t);
+  const XL = PX - PR, YL = PX + PR, XW = 200, XH = 150, YW = 150, YH = 115;
+  const focusP = win(t, S('makara'), E('gerilme'), 0.4, 0.5), focusX = win(t, S('xkuvvet'), E('xsonuc'), 0.4, 0.5), focusY = win(t, S('ykuvvet'), E('ysonuc'), 0.4, 0.5);
+  highlight(PX, py, 260, COL.orange, focusP); highlight(XL, GY - 75, 240, COL.red, focusX); highlight(YL, GY - 60 - yUp, 200, COL.blue, focusY);
+  drawLine(80, GY, 1000, GY, kG, COL.ink, 8);
+  if (kG > 0) { for (let i = 0; i < 18; i++) { const gx = 100 + i * 52; if (gx > 80 + 920 * kG) break; drawLine(gx, GY + 6, gx - 34, GY + 46, 1, COL.ink, 5); } }
+  const xTop = GY - XH, yTop = GY - YH - yUp;
+  drawLine(XL, py, XL, xTop, kR, COL.ink, 6); drawLine(YL, py, YL, yTop, kR, COL.ink, 6);
+  if (kP > 0) { x.save(); x.beginPath(); x.arc(PX, py, PR, -PI / 2, -PI / 2 + TAU * eo(kP)); x.lineWidth = 9; x.strokeStyle = COL.ink; x.stroke(); x.beginPath(); x.arc(PX, py, 18, 0, TAU); x.fillStyle = COL.ink; x.globalAlpha = kP; x.fill(); x.restore(); if (kR > 0) { x.save(); x.beginPath(); x.arc(PX, py, PR, PI, 0); x.lineWidth = 6; x.strokeStyle = COL.ink; x.globalAlpha = kR; x.stroke(); x.restore(); } }
+  arrow(PX, py - PR, PX, py - PR - 230, kF, COL.orange, 'F = 60 N', PX + 165, py - PR - 170);
+  box(XL, GY - XH / 2, XW, XH, COL.ink, kX); if (kX > 0) { txt('X', XL, GY - 92, '700 72px Caveat', COL.ink, kX); txt('4 kg', XL, GY - 38, '700 50px Caveat', COL.soft, kX); }
+  box(YL, GY - YH / 2 - yUp, YW, YH, COL.ink, kY); if (kY > 0) { txt('Y', YL, GY - 74 - yUp, '700 62px Caveat', COL.ink, kY); txt('2 kg', YL, GY - 28 - yUp, '700 44px Caveat', COL.soft, kY); }
+  // pulley free-body: the rope pulls it down on both sides
+  const kT = ss(WT('makara', 'gerilmelerin') - 0.3, WT('makara', 'gerilmelerin') + 0.6, t) * (1 - ss(E('gerilme') + 0.3, E('gerilme') + 1, t));
+  arrow(XL - 45, py + 10, XL - 45, py + 180, kT, COL.blue, 'T', XL - 100, py + 120);
+  arrow(YL + 45, py + 10, YL + 45, py + 180, kT, COL.blue, 'T', YL + 100, py + 120);
+  if (kT > 0.5) txt('30 N', XL - 100, py + 180, '700 44px Caveat', COL.blue, ss(WT('gerilme', 'otuz'), WT('gerilme', 'otuz') + 0.4, t) * kT);
+  if (kT > 0.5) txt('30 N', YL + 100, py + 180, '700 44px Caveat', COL.blue, ss(WT('gerilme', 'otuz'), WT('gerilme', 'otuz') + 0.4, t) * kT);
+  // rope tension on each block, along the rope
+  const kTx = ss(WT('xkuvvet', 'ip') - 0.2, WT('xkuvvet', 'ip') + 0.5, t), kTy = ss(WT('ykuvvet', 'ip') - 0.2, WT('ykuvvet', 'ip') + 0.5, t);
+  arrow(XL, xTop, XL, xTop - 180, kTx, COL.blue, 'T = 30', XL - 120, xTop - 130);
+  arrow(YL, yTop, YL, yTop - 180, kTy, COL.blue, 'T = 30', YL + 125, yTop - 140);
+  // weights
+  const kGx = ss(WT('xkuvvet', 'ağırlığı') - 0.2, WT('xkuvvet', 'ağırlığı') + 0.5, t), kGy = ss(WT('ykuvvet', 'ağırlığı') - 0.2, WT('ykuvvet', 'ağırlığı') + 0.5, t);
+  arrow(XL - 50, GY - 70, XL - 50, GY + 160, kGx, COL.red, 'G = 40', XL - 165, GY + 120);
+  arrow(YL + 30, GY - 50 - yUp, YL + 30, GY + 140 - yUp, kGy, COL.red, 'G = 20', YL + 150, GY + 110 - yUp);
+  // normal force on X
+  const kN = ss(WT('xsonuc', 'zemin') - 0.2, WT('xsonuc', 'zemin') + 0.5, t);
+  arrow(XL + 50, GY + 180, XL + 50, GY + 6, kN, COL.green, 'N = 10', XL + 40, GY + 225);
+  // accelerations
+  const kAy = ss(WT('ysonuc', 'beş') - 0.2, WT('ysonuc', 'beş') + 0.5, t), kAp = ss(WT('ipucu', 'iki', 0) - 0.3, WT('ipucu', 'iki', 0) + 0.5, t);
+  arrow(YL + 250, GY - 60 - yUp, YL + 250, GY - 250 - yUp, kAy, COL.green, 'a = 5', YL + 250, GY - 300 - yUp, 1, 7);
+  arrow(PX - 290, py + 60, PX - 290, py - 110, kAp, COL.green, 'a = 2,5', PX - 290, py - 160, 1, 7);
+  const kA0 = ss(WT('xsonuc', 'ivmesi'), WT('xsonuc', 'ivmesi') + 0.5, t);
+  if (kA0 > 0) { x.save(); x.globalAlpha = kA0; x.beginPath(); x.roundRect(XL - 270, GY - 232, 150, 64, 14); x.fillStyle = '#e9f6ee'; x.fill(); x.lineWidth = 4; x.strokeStyle = COL.green; x.stroke(); x.restore(); txt('a = 0', XL - 195, GY - 200, '700 54px Caveat', COL.green, kA0); }
+}
+function win(t, a, b, fi, fo) { return ss(a - fi, a, t) * (1 - ss(b, b + fo, t)); }
+
+// ---------- the working (equations panel) ----------
+const STEPS = [
+  { at: () => WT('makara', 'eşittir'), s: 'F = 2T', col: COL.ink },
+  { at: () => WT('gerilme', 'altmışın'), s: 'T = 60 / 2 = 30 N', col: COL.blue },
+  { at: () => WT('g', 'on'), s: 'g = 10 m/s²', col: COL.soft },
+  { at: () => WT('xkuvvet', 'otuz', 1), s: 'X:  30 N < 40 N  →  yerden kalkamaz', col: COL.red },
+  { at: () => WT('xsonuc', 'ivmesi'), s: 'a_X = 0     (N = 40 − 30 = 10 N)', col: COL.green, boxed: true },
+  { at: () => WT('ykuvvet', 'otuz'), s: 'Y:  30 N > 20 N  →  yukarı çıkar', col: COL.red },
+  { at: () => WT('ysonuc', 'net'), s: 'F_net = 30 − 20 = 10 N', col: COL.ink },
+  { at: () => WT('ysonuc', 'beş'), s: 'a_Y = 10 / 2 = 5 m/s²  ↑', col: COL.green, boxed: true },
+  { at: () => WT('ipucu', 'ortalamasıyla'), s: 'a_makara = (0 + 5) / 2 = 2,5 m/s²', col: COL.orange },
+];
+function panel(t) {
+  const shown = STEPS.filter(s => t >= s.at() - 0.1), visible = shown.slice(-4);
+  if (!shown.length) return;
+  x.save(); x.beginPath(); x.roundRect(50, 1360, 980, 330, 24); x.fillStyle = '#ffffff'; x.fill(); x.lineWidth = 4; x.strokeStyle = '#d5dae3'; x.stroke(); x.restore();
+  visible.forEach((s, i) => {
+    const k = ss(s.at() - 0.1, s.at() + 0.35, t), y = 1420 + i * 76, w = s.s.length;
+    x.save(); x.beginPath(); x.rect(70, y - 40, 940 * eo(k) + 10, 80); x.clip();
+    if (s.boxed) { const tw = rich(s.s, -9999, -9999, 56, s.col, 0.0001); x.beginPath(); x.roundRect(84, y - 34, tw + 36, 68, 12); x.fillStyle = 'rgba(46,155,90,.12)'; x.fill(); x.lineWidth = 4; x.strokeStyle = s.col; x.stroke(); }
+    rich(s.s, 100, y, 56, s.col, 1); x.restore();
+  });
+}
+function finalCard(t) {
+  const k = ss(S('ozet') - 0.1, S('ozet') + 0.5, t) * (1 - ss(S('ipucu') - 0.2, S('ipucu') + 0.3, t)); if (k <= 0) return;
+  x.save(); x.globalAlpha = k; x.translate(540, 230); const s = 0.9 + 0.1 * eb(k); x.scale(s, s);
+  x.beginPath(); x.roundRect(-430, -95, 860, 190, 26); x.fillStyle = '#ffffff'; x.fill(); x.lineWidth = 7; x.strokeStyle = COL.green; x.stroke();
+  rich('a_X = 0', -220, 0, 84, COL.ink, 1, 'center'); rich('a_Y = 5 m/s² ↑', 180, 0, 84, COL.green, 1, 'center');
+  x.restore();
+}
+
+// ---------- captions ----------
+const CH = []; LN.forEach(l => { let cur = [], len = 0; l.words.forEach((w, k) => { cur.push(w); len += w[0].length + 1; if (/[.,;:]$/.test(w[0]) && len > 18 || len > 34 || k === l.words.length - 1) { CH.push({ words: cur, s: cur[0][1], e: cur[cur.length - 1][2] + 0.25 }); cur = []; len = 0; } }); });
+CH.forEach((c, i) => { if (i < CH.length - 1) c.e = Math.min(c.e, CH[i + 1].s); });
+function captions(t) {
+  const c = CH.find(c => t >= c.s - 0.05 && t < c.e); if (!c) return;
+  x.save(); x.font = '500 50px Inter'; const sp = x.measureText(' ').width, rows = [[]]; let rw = 0;
+  c.words.forEach(w => { const ww = x.measureText(w[0]).width; if (rw + ww > 900 && rows[rows.length - 1].length) { rows.push([]); rw = 0; } rows[rows.length - 1].push(w); rw += ww + sp; });
+  const y0 = 1800 - (rows.length - 1) * 34;
+  x.beginPath(); x.roundRect(60, y0 - 52, 960, rows.length * 68 + 36, 20); x.fillStyle = 'rgba(34,49,74,.92)'; x.fill();
+  rows.forEach((r, ri) => { const full = r.reduce((a, w) => a + x.measureText(w[0]).width, 0) + sp * (r.length - 1); let px = 540 - full / 2; r.forEach(w => { const on = t >= w[1], cur = on && t < w[2] + 0.06; x.fillStyle = cur ? '#ffd166' : on ? '#ffffff' : 'rgba(255,255,255,.5)'; x.textBaseline = 'middle'; x.fillText(w[0], px, y0 + ri * 68); px += x.measureText(w[0]).width + sp; }); });
+  x.restore();
+}
+
+// ---------- render ----------
+function render(t) {
+  t = cl(t, 0, DUR - 1e-3);
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1;
+  x.fillStyle = COL.board; x.fillRect(0, 0, W, H);
+  x.strokeStyle = COL.grid; x.lineWidth = 2; for (let gx = 0; gx <= W; gx += 60) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, H); x.stroke(); } for (let gy = 0; gy <= H; gy += 60) { x.beginPath(); x.moveTo(0, gy); x.lineTo(W, gy); x.stroke(); }
+  txt('MAKARA SORUSU', 540, 90, '64px "Bebas Neue"', COL.ink, ss(0, 0.6, t)); rich('a_X = ?      a_Y = ?', 540, 148, 50, COL.soft, ss(0.2, 0.8, t) * (1 - ss(S('ozet') - 0.2, S('ozet'), t)), 'center');
+  diagram(t); panel(t); finalCard(t); captions(t);
+  if (t < 0.3) { x.fillStyle = `rgba(0,0,0,${1 - t / 0.3})`; x.fillRect(0, 0, W, H); }
+}
+Promise.all(['64px "Bebas Neue"', '700 56px Caveat', '500 50px Inter'].map(f => document.fonts.load(f, 'AaÇşğıİ'))).then(() => {
+  window.seekTo = tt => { render(tt); return true; };
+  render(capMode ? 0 : 40); if (capMode) return;
+  let now = 0, play = false, last = null; const pp = document.getElementById('pp'), sl = document.getElementById('sl'), tm = document.getElementById('tm'), A = document.getElementById('a1');
+  sl.max = DUR; const sync = () => { try { A.currentTime = now; play ? A.play().catch(() => {}) : A.pause(); } catch (e) {} };
+  pp.onclick = () => { play = !play; pp.textContent = play ? 'Duraklat' : 'Oynat'; last = null; sync(); };
+  sl.oninput = () => { now = +sl.value; render(now); tm.textContent = now.toFixed(1); sync(); };
+  (function loop(ts) { if (play) { if (last != null) now += (ts - last) / 1000; if (now >= DUR) { now = 0; sync(); } render(now); sl.value = now; tm.textContent = now.toFixed(1); } last = ts; requestAnimationFrame(loop); })();
+});
+</script></body></html>
